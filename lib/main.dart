@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/HomeScreen/home_screen.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/vehicle_details.dart';
@@ -20,7 +21,10 @@ class MainApp extends StatelessWidget {
         AppRoutes.home: (context) => const HomeScreen(),
 
         AppRoutes.vehicleDetails: (context) {
-          return const VehicleDetailsScreen();
+          final vehicle =
+              ModalRoute.of(context)!.settings.arguments
+                  as Vehicle;
+          return VehicleDetailsScreen(vehicle: vehicle);
         },
       },
     );

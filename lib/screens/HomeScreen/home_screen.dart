@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/data/vehicles.dart';
+import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/routes/app_routes.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  void _viewVehicle(dynamic context) {
-    Navigator.pushNamed(context, AppRoutes.vehicleDetails);
+  void _viewVehicle(BuildContext context, Vehicle vehicle) {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.vehicleDetails,
+      arguments: vehicle,
+    );
   }
 
   @override
@@ -15,6 +20,7 @@ class HomeScreen extends StatelessWidget {
       body: ListView.builder(
         itemCount: Vehicles.vehicles.length,
         itemBuilder: (context, index) {
+          final vehicle = Vehicles.vehicles[index];
           return Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 18,
@@ -23,7 +29,7 @@ class HomeScreen extends StatelessWidget {
             child: Card(
               elevation: 4,
               child: InkWell(
-                onTap: () => _viewVehicle(context),
+                onTap: () => _viewVehicle(context, vehicle),
                 borderRadius: BorderRadius.circular(12),
                 child: Row(
                   mainAxisAlignment:
@@ -39,16 +45,13 @@ class HomeScreen extends StatelessWidget {
                             CrossAxisAlignment.start,
                         children: [
                           Text(
-                            Vehicles.vehicles[index].model,
+                            vehicle.model,
                             style: Theme.of(
                               context,
                             ).textTheme.titleLarge,
                           ),
                           Text(
-                            Vehicles
-                                .vehicles[index]
-                                .odometerReading
-                                .toString(),
+                            vehicle.odometerReading.toString(),
                             style: Theme.of(
                               context,
                             ).textTheme.labelMedium,
@@ -62,8 +65,7 @@ class HomeScreen extends StatelessWidget {
                       icon: Icon(Icons.add),
                     ),
                     IconButton(
-                      onPressed: () =>
-                          _viewVehicle(context),
+                      onPressed: () => _viewVehicle(context, vehicle),
                       icon: Icon(Icons.remove_red_eye),
                     ),
                   ],
