@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/widgets/screen_container.dart';
 
 class VehicleDetailsScreen extends StatelessWidget {
   const VehicleDetailsScreen({
@@ -11,9 +12,10 @@ class VehicleDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Vehicle Details")),
-      body: Center(child: Text(vehicle.model)),
+    return Screencontainer(
+      title: "Vehicle Details",
+      showBackButton: true,
+      child: Center(child: Text(vehicle.model)),
     );
   }
 }
