@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 
-class Screencontainer extends StatelessWidget {
-  const Screencontainer({
+class ScreenContainer extends StatelessWidget {
+  final String title;
+  final Widget child;
+  final bool showBackButton;
+
+  const ScreenContainer({
     super.key,
     required this.title,
     required this.child,
-    required this.showBackButton,
+    this.showBackButton = true,
   });
-
-  final String title;
-  final bool showBackButton;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: Text(title),
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         leading: showBackButton
             ? IconButton(
-                onPressed: () {},
-                icon: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                ),
+                icon: const Icon(Icons.arrow_back_ios_new),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
               )
             : null,
       ),

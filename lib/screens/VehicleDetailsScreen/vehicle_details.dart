@@ -12,10 +12,13 @@ class VehicleDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Screencontainer(
+    return ScreenContainer(
       title: "Vehicle Details",
       showBackButton: true,
       child: Center(child: Text(vehicle.model)),
     );
   }
 }
+
+/// TODO:
+/// 1. Completing the UI.

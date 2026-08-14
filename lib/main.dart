@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/HomeScreen/home_screen.dart';
@@ -15,6 +16,13 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+
+      // Theme
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+
+      // Routing
       initialRoute: AppRoutes.home,
 
       routes: {

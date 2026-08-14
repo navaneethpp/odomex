@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'package:odomex/data/vehicles.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/routes/app_routes.dart';
+import 'package:odomex/screens/HomeScreen/widgets/vehicle_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -17,60 +19,29 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Screencontainer(
+    return ScreenContainer(
       title: 'Available Vehicles',
       showBackButton: false,
-      child: ListView.builder(
+      child: ListView.separated(
         itemCount: Vehicles.vehicles.length,
+
+        separatorBuilder: (context, index) {
+          return const SizedBox(height: 12);
+        },
+
         itemBuilder: (context, index) {
           final vehicle = Vehicles.vehicles[index];
-          return Card(
-            elevation: 4,
-            child: InkWell(
-              onTap: () => _viewVehicle(context, vehicle),
-              borderRadius: BorderRadius.circular(12),
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          vehicle.model,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge,
-                        ),
-                        Text(
-                          vehicle.odometerReading
-                              .toString(),
-                          style: Theme.of(
-                            context,
-                          ).textTheme.labelMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Spacer(),
-                  IconButton(
-                    onPressed: () {},
-                    icon: Icon(Icons.add),
-                  ),
-                  IconButton(
-                    onPressed: () =>
-                        _viewVehicle(context, vehicle),
-                    icon: Icon(Icons.remove_red_eye),
-                  ),
-                ],
-              ),
-            ),
+
+          return VehicleCard(
+            vehicle: vehicle,
+
+            onView: () {
+              _viewVehicle(context, vehicle);
+            },
+
+            onAdd: () {
+              // TODO: Add vehicle action
+            },
           );
         },
       ),
