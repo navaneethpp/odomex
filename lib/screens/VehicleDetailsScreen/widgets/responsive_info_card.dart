@@ -6,6 +6,7 @@ class ResponsiveInfoCard extends StatelessWidget {
   final String titleValue;
   final IconData? icon;
   final Color? backgroundColor;
+  final bool centerAlign; // NEW
 
   const ResponsiveInfoCard({
     super.key,
@@ -13,12 +14,21 @@ class ResponsiveInfoCard extends StatelessWidget {
     required this.titleValue,
     this.icon,
     this.backgroundColor,
+    this.centerAlign =
+        false, // NEW — defaults to current left-aligned look
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    final crossAxisAlignment = centerAlign
+        ? CrossAxisAlignment.center
+        : CrossAxisAlignment.start;
+    final textAlign = centerAlign
+        ? TextAlign.center
+        : TextAlign.start;
 
     return SizedBox(
       width: double.infinity,
@@ -28,7 +38,7 @@ class ResponsiveInfoCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.paddingLg),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: crossAxisAlignment,
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
@@ -42,6 +52,7 @@ class ResponsiveInfoCard extends StatelessWidget {
 
               Text(
                 subtitleValue,
+                textAlign: textAlign,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
@@ -54,6 +65,7 @@ class ResponsiveInfoCard extends StatelessWidget {
 
               Text(
                 titleValue,
+                textAlign: textAlign,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
