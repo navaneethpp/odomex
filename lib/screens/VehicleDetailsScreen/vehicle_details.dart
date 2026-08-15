@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/responsive_info_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
 class VehicleDetailsScreen extends StatelessWidget {
@@ -13,13 +14,53 @@ class VehicleDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenContainer(
-      title: "Vehicle Details",
+      title: vehicle.model,
       showBackButton: true,
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         child: const Icon(Icons.add),
       ),
-      child: Center(child: Text(vehicle.model)),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Odometer Reading',
+                    titleValue: 'titleValue',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Hi',
+                    titleValue: 'titleValue',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Hi',
+                    titleValue: 'titleValue',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Hi',
+                    titleValue: 'titleValue',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
