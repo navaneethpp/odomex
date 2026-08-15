@@ -15,6 +15,10 @@ class VehicleDetailsScreen extends StatelessWidget {
     return ScreenContainer(
       title: "Vehicle Details",
       showBackButton: true,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
       child: Center(child: Text(vehicle.model)),
     );
   }
