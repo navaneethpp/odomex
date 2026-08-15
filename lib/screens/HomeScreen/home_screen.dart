@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_sizes.dart';
 
 import 'package:odomex/data/vehicles.dart';
 import 'package:odomex/models/vehicle.dart';
@@ -38,7 +39,7 @@ class HomeScreen extends StatelessWidget {
         itemCount: Vehicles.vehicles.length,
 
         separatorBuilder: (context, index) {
-          return const SizedBox(height: 12);
+          return const SizedBox(height: AppSizes.spacingMd);
         },
 
         itemBuilder: (context, index) {

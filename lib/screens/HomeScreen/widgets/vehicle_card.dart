@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
 
 class VehicleCard extends StatelessWidget {
@@ -18,12 +19,14 @@ class VehicleCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      elevation: 1,
+      elevation: AppSizes.elevationSm,
       child: InkWell(
         onTap: onView,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+          AppSizes.radiusLg,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSizes.paddingLg),
           child: Row(
             children: [
               Expanded(
@@ -36,7 +39,9 @@ class VehicleCard extends StatelessWidget {
                       style: theme.textTheme.titleMedium,
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(
+                      height: AppSizes.spacingSm,
+                    ),
 
                     Text(
                       '${vehicle.odometerReading} km',

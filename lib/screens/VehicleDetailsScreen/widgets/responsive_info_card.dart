@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_sizes.dart';
 
 class ResponsiveInfoCard extends StatelessWidget {
   final String subtitleValue;
@@ -23,9 +24,9 @@ class ResponsiveInfoCard extends StatelessWidget {
       width: double.infinity,
       child: Card(
         color: backgroundColor ?? colorScheme.surface,
-        elevation: 0,
+        elevation: AppSizes.elevationMd,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSizes.paddingLg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -33,10 +34,10 @@ class ResponsiveInfoCard extends StatelessWidget {
               if (icon != null) ...[
                 Icon(
                   icon,
-                  size: 20,
+                  size: AppSizes.iconMd,
                   color: colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSizes.spacingSm),
               ],
 
               Text(
@@ -49,7 +50,7 @@ class ResponsiveInfoCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
 
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSizes.spacingXs),
 
               Text(
                 titleValue,

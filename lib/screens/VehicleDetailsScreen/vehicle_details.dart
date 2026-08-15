@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/responsive_info_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
@@ -31,7 +32,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                     titleValue: 'titleValue',
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSizes.spacingLg),
                 const Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Hi',
@@ -40,7 +41,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.spacingLg),
             Row(
               children: [
                 const Expanded(
@@ -49,7 +50,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                     titleValue: 'titleValue',
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSizes.spacingLg),
                 const Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Hi',
