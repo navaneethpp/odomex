@@ -17,11 +17,23 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _addVehicle(BuildContext context) {
+    // TODO: Navigate to add vehicle screen
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScreenContainer(
       title: 'Available Vehicles',
       showBackButton: false,
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _addVehicle(context);
+        },
+        child: const Icon(Icons.add),
+      ),
+
       child: ListView.separated(
         itemCount: Vehicles.vehicles.length,
 

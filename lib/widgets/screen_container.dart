@@ -4,22 +4,14 @@ class ScreenContainer extends StatelessWidget {
   final String title;
   final Widget child;
   final bool showBackButton;
-
-  //Floating Action Button
-  final bool showFloatingButton;
-  final IconData? floatingActionButtonIcon;
-  final VoidCallback? onFloatingButtonPressed;
-  final String? floatingButtonTooltip;
+  final Widget? floatingActionButton;
 
   const ScreenContainer({
     super.key,
     required this.title,
     required this.child,
     this.showBackButton = true,
-    this.showFloatingButton = false,
-    this.floatingActionButtonIcon,
-    this.onFloatingButtonPressed,
-    this.floatingButtonTooltip,
+    this.floatingActionButton,
   });
 
   @override
@@ -48,15 +40,7 @@ class ScreenContainer extends StatelessWidget {
         ),
         child: child,
       ),
-      floatingActionButton: showFloatingButton
-          ? FloatingActionButton(
-              onPressed: onFloatingButtonPressed,
-              tooltip: floatingButtonTooltip,
-              child: Icon(
-                floatingActionButtonIcon ?? Icons.add,
-              ),
-            )
-          : null,
+      floatingActionButton: floatingActionButton,
     );
   }
 }
