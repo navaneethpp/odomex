@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/models/vehicle_data_type.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/add_vehilcle_data_sheet.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/responsive_info_card.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/section_title.dart';
 import 'package:odomex/widgets/screen_container.dart';
@@ -14,12 +16,60 @@ class VehicleDetailsScreen extends StatelessWidget {
   final Vehicle vehicle;
 
   @override
+  void _handleVehicleData(
+    BuildContext context,
+    VehicleDataType type,
+    Map<String, dynamic> data,
+  ) {
+    switch (type) {
+      case VehicleDataType.odometer:
+        final odometer = data['odometerReading'];
+
+        debugPrint('New odometer: $odometer km');
+
+        break;
+
+      case VehicleDataType.fuelRefill:
+        final amount = data['fuelAmount'];
+        final price = data['fuelPrice'];
+
+        debugPrint('Fuel: $amount L - ₹$price');
+
+        break;
+
+      case VehicleDataType.service:
+        final description = data['description'];
+
+        debugPrint('Service: $description');
+
+        break;
+    }
+  }
+
+  void _showAddDataSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) {
+        return AddVehicleDataSheet(
+          onSave: (type, data) {
+            _handleVehicleData(context, type, data);
+          },
+        );
+      },
+    );
+  }
+
   Widget build(BuildContext context) {
     return ScreenContainer(
       title: vehicle.model,
       showBackButton: true,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          _showAddDataSheet(context);
+        },
         child: const Icon(Icons.add),
       ),
       child: SingleChildScrollView(
@@ -143,3 +193,7 @@ class VehicleDetailsScreen extends StatelessWidget {
     );
   }
 }
+
+/// TODO:
+/// Currently it is have the option to add data. there is no logic
+/// We need to add the logic.
