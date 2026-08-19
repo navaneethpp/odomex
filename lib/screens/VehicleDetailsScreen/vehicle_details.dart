@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/models/vehicle_data_type.dart';
@@ -15,7 +16,13 @@ class VehicleDetailsScreen extends StatelessWidget {
 
   final Vehicle vehicle;
 
-  @override
+  static final DateFormat _dateFormat = DateFormat('d MMMM yyyy');
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '—';
+    return _dateFormat.format(date);
+  }
+
   void _handleVehicleData(
     BuildContext context,
     VehicleDataType type,
@@ -24,24 +31,18 @@ class VehicleDetailsScreen extends StatelessWidget {
     switch (type) {
       case VehicleDataType.odometer:
         final odometer = data['odometerReading'];
-
         debugPrint('New odometer: $odometer km');
-
         break;
 
       case VehicleDataType.fuelRefill:
         final amount = data['fuelAmount'];
         final price = data['fuelPrice'];
-
         debugPrint('Fuel: $amount L - ₹$price');
-
         break;
 
       case VehicleDataType.service:
         final description = data['description'];
-
         debugPrint('Service: $description');
-
         break;
     }
   }
@@ -62,6 +63,7 @@ class VehicleDetailsScreen extends StatelessWidget {
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     return ScreenContainer(
       title: vehicle.model,
@@ -75,6 +77,7 @@ class VehicleDetailsScreen extends StatelessWidget {
       child: SingleChildScrollView(
         child: Column(
           children: [
+            // ── Current Odometer (highlighted) ──
             ResponsiveInfoCard(
               subtitleValue: 'Current Odometer',
               titleValue: '${vehicle.odometerReading} km',
@@ -83,18 +86,15 @@ class VehicleDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: AppSizes.spacingLg),
 
-            // Vehicle Information
-            const SectionTitle(
-              title: 'Vehicle Information',
-            ),
+            // ── Vehicle Information ──
+            const SectionTitle(title: 'Vehicle Information'),
 
             Row(
               children: [
                 Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Brand',
-                    titleValue: vehicle.brand.name
-                        .toUpperCase(),
+                    titleValue: vehicle.brand.displayName,
                   ),
                 ),
 
@@ -116,8 +116,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                 Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Year',
-                    titleValue: vehicle.manufacturingYear
-                        .toString(),
+                    titleValue: vehicle.manufacturingYear.toString(),
                   ),
                 ),
 
@@ -125,7 +124,7 @@ class VehicleDetailsScreen extends StatelessWidget {
 
                 Expanded(
                   child: ResponsiveInfoCard(
-                    subtitleValue: 'Registration Number',
+                    subtitleValue: 'Registration',
                     titleValue: vehicle.registrationNumber,
                   ),
                 ),
@@ -134,10 +133,30 @@ class VehicleDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: AppSizes.spacingLg),
 
-            // Engine Information
-            const SectionTitle(
-              title: 'Enginer Informaiton',
+            Row(
+              children: [
+                Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Color',
+                    titleValue: vehicle.color,
+                  ),
+                ),
+
+                const SizedBox(width: AppSizes.spacingLg),
+
+                Expanded(
+                  child: ResponsiveInfoCard(
+                    subtitleValue: 'Purchase Date',
+                    titleValue: _formatDate(vehicle.purchaseDate),
+                  ),
+                ),
+              ],
             ),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── Engine Information ──
+            const SectionTitle(title: 'Engine Information'),
 
             Row(
               children: [
@@ -153,8 +172,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                 Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Engine Capacity',
-                    titleValue:
-                        '${vehicle.engineCapacity} cc',
+                    titleValue: '${vehicle.engineCapacity} cc',
                   ),
                 ),
               ],
@@ -162,31 +180,181 @@ class VehicleDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: AppSizes.spacingLg),
 
-            // Service Information
-            const SectionTitle(
-              title: 'Service Information',
-            ),
+            // ── Service Information ──
+            if (vehicle.lastServiceDate != null ||
+                vehicle.nextServiceOdometer != null) ...[
+              const SectionTitle(title: 'Service Information'),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Last Service Date',
-                    titleValue: vehicle.lastServiceDate,
+              Row(
+                children: [
+                  if (vehicle.lastServiceDate != null)
+                    Expanded(
+                      child: ResponsiveInfoCard(
+                        subtitleValue: 'Last Service Date',
+                        titleValue: _formatDate(vehicle.lastServiceDate),
+                      ),
+                    ),
+
+                  if (vehicle.lastServiceDate != null &&
+                      vehicle.nextServiceOdometer != null)
+                    const SizedBox(width: AppSizes.spacingLg),
+
+                  if (vehicle.nextServiceOdometer != null)
+                    Expanded(
+                      child: ResponsiveInfoCard(
+                        subtitleValue: 'Next Service',
+                        titleValue: '${vehicle.nextServiceOdometer} km',
+                      ),
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+            ],
+
+            // ── Insurance ──
+            if (vehicle.hasInsurance) ...[
+              const SectionTitle(title: 'Insurance'),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Provider',
+                      titleValue: vehicle.insuranceProvider ?? '—',
+                    ),
                   ),
-                ),
 
-                const SizedBox(width: AppSizes.spacingLg),
+                  const SizedBox(width: AppSizes.spacingLg),
 
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Next Service Odometer',
-                    titleValue:
-                        '${vehicle.nextServiceOdometer} km',
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Policy Number',
+                      titleValue: vehicle.insurancePolicyNumber ?? '—',
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Start Date',
+                      titleValue: _formatDate(vehicle.insuranceStartDate),
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSizes.spacingLg),
+
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'End Date',
+                      titleValue: _formatDate(vehicle.insuranceEndDate),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+            ],
+
+            // ── PUC ──
+            if (vehicle.hasPuc) ...[
+              const SectionTitle(title: 'PUC — Pollution Under Control'),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Certificate Number',
+                      titleValue: vehicle.pucCertificateNumber ?? '—',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Start Date',
+                      titleValue: _formatDate(vehicle.pucStartDate),
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSizes.spacingLg),
+
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'End Date',
+                      titleValue: _formatDate(vehicle.pucEndDate),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+            ],
+
+            // ── Oil Change ──
+            if (vehicle.hasOilChange) ...[
+              const SectionTitle(title: 'Oil Change'),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Last Oil Change',
+                      titleValue: _formatDate(vehicle.lastOilChangeDate),
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSizes.spacingLg),
+
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Interval',
+                      titleValue: vehicle.oilChangeInterval != null
+                          ? '${vehicle.oilChangeInterval!.toStringAsFixed(0)} km'
+                          : '—',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Last Oil Change At',
+                      titleValue: vehicle.lastOilChangeOdometer != null
+                          ? '${vehicle.lastOilChangeOdometer!.toStringAsFixed(0)} km'
+                          : '—',
+                    ),
+                  ),
+
+                  const SizedBox(width: AppSizes.spacingLg),
+
+                  Expanded(
+                    child: ResponsiveInfoCard(
+                      subtitleValue: 'Next Oil Change',
+                      titleValue: vehicle.nextOilChangeOdometer != null
+                          ? '${vehicle.nextOilChangeOdometer!.toStringAsFixed(0)} km'
+                          : '—',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSizes.spacingLg),
+            ],
           ],
         ),
       ),
@@ -195,5 +363,6 @@ class VehicleDetailsScreen extends StatelessWidget {
 }
 
 /// TODO:
-/// Currently it is have the option to add data. there is no logic
-/// We need to add the logic.
+/// Currently the Add Data sheet has no logic — data is only printed to the
+/// debug console. Implement persistence (e.g. update odometer, record fuel
+/// refill, log service) once a storage layer is introduced.

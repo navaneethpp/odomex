@@ -3,7 +3,7 @@ import 'package:odomex/models/vehicle.dart';
 class Vehicles {
   Vehicles._();
 
-  static const List<Vehicle> vehicles = [
+  static final List<Vehicle> vehicles = [
     Vehicle(
       brand: VehicleBrand.honda,
       model: 'Honda Activa 5G',
@@ -16,8 +16,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 109,
 
-      purchaseDate: '15 March 2019',
-      lastServiceDate: '10 July 2026',
+      purchaseDate: DateTime(2019, 3, 15),
+      lastServiceDate: DateTime(2026, 7, 10),
       nextServiceOdometer: 30000,
     ),
 
@@ -33,8 +33,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 97,
 
-      purchaseDate: '22 August 2018',
-      lastServiceDate: '28 June 2026',
+      purchaseDate: DateTime(2018, 8, 22),
+      lastServiceDate: DateTime(2026, 6, 28),
       nextServiceOdometer: 35000,
     ),
 
@@ -50,8 +50,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 124,
 
-      purchaseDate: '12 January 2020',
-      lastServiceDate: '05 August 2026',
+      purchaseDate: DateTime(2020, 1, 12),
+      lastServiceDate: DateTime(2026, 8, 5),
       nextServiceOdometer: 25000,
     ),
 
@@ -67,8 +67,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 199,
 
-      purchaseDate: '18 June 2022',
-      lastServiceDate: '20 July 2026',
+      purchaseDate: DateTime(2022, 6, 18),
+      lastServiceDate: DateTime(2026, 7, 20),
       nextServiceOdometer: 20000,
     ),
 
@@ -84,8 +84,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 349,
 
-      purchaseDate: '05 November 2021',
-      lastServiceDate: '15 June 2026',
+      purchaseDate: DateTime(2021, 11, 5),
+      lastServiceDate: DateTime(2026, 6, 15),
       nextServiceOdometer: 30000,
     ),
 
@@ -101,8 +101,8 @@ class Vehicles {
       fuelType: 'Petrol',
       engineCapacity: 765,
 
-      purchaseDate: '10 September 2023',
-      lastServiceDate: '01 August 2026',
+      purchaseDate: DateTime(2023, 9, 10),
+      lastServiceDate: DateTime(2026, 8, 1),
       nextServiceOdometer: 15000,
     ),
   ];
