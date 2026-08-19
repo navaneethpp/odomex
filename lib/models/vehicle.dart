@@ -36,7 +36,7 @@ class Vehicle {
     required this.registrationNumber,
     required this.color,
     required this.fuelType,
-    required this.engineCapacity,
+    this.engineCapacity,
     required this.purchaseDate,
     this.lastServiceDate,
     this.nextServiceOdometer,
@@ -83,7 +83,8 @@ class Vehicle {
   final String fuelType;
 
   /// Engine displacement in cubic centimetres (cc).
-  final int engineCapacity;
+  /// Null for electric vehicles, which have no cc displacement.
+  final int? engineCapacity;
 
   // ─────────────────────────────────────────────
   // USAGE

@@ -172,7 +172,9 @@ class VehicleDetailsScreen extends StatelessWidget {
                 Expanded(
                   child: ResponsiveInfoCard(
                     subtitleValue: 'Engine Capacity',
-                    titleValue: '${vehicle.engineCapacity} cc',
+                    titleValue: vehicle.engineCapacity != null
+                        ? '${vehicle.engineCapacity} cc'
+                        : 'N/A',
                   ),
                 ),
               ],
