@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
@@ -35,6 +36,13 @@ class HomeScreen extends ConsumerWidget {
     Navigator.pushNamed(context, AppRoutes.addVehicle);
   }
 
+  void _addRecord(BuildContext context, Vehicle vehicle) {
+    showAddVehicleRecordSheet(
+      context: context,
+      vehicleId: vehicle.id,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicles = ref.watch(vehicleProvider);
@@ -64,10 +72,7 @@ class HomeScreen extends ConsumerWidget {
 
                   onView: () => _viewVehicle(context, ref, vehicle),
 
-                  onAdd: () {
-                    // Opens Add Record sheet via Vehicle Details.
-                    _viewVehicle(context, ref, vehicle);
-                  },
+                  onAdd: () => _addRecord(context, vehicle),
                 );
               },
             ),

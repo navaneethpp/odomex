@@ -3,14 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/core/utils/vehicle_status.dart';
-import 'package:odomex/models/fuel_record.dart';
-import 'package:odomex/models/odometer_record.dart';
-import 'package:odomex/models/service_record.dart';
+import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 import 'package:odomex/models/vehicle.dart';
-import 'package:odomex/models/vehicle_data_type.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
-import 'package:odomex/providers/vehicle_record_provider.dart';
-import 'package:odomex/screens/VehicleDetailsScreen/widgets/add_vehilcle_data_sheet.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/alerts_card.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/compliance_card.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/info_list_card.dart';
@@ -192,63 +187,11 @@ class VehicleDetailsScreen extends ConsumerWidget {
   }
 
   // ─────────────────────────────────────────────
-  // ACTIONS
-  // ─────────────────────────────────────────────
-
-  void _showAddDataSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+  void _addRecord(BuildContext context) {
+    showAddVehicleRecordSheet(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (sheetContext) => AddVehicleDataSheet(
-        vehicleId: vehicleId,
-        onSave: (type, data) =>
-            _handleVehicleData(ref, type, data),
-      ),
+      vehicleId: vehicleId,
     );
-  }
-
-  void _handleVehicleData(
-    WidgetRef ref,
-    VehicleDataType type,
-    Map<String, dynamic> data,
-  ) {
-    final notifier = ref.read(vehicleRecordProvider.notifier);
-    final now = DateTime.now();
-
-    switch (type) {
-      case VehicleDataType.odometer:
-        notifier.addOdometerRecord(
-          OdometerRecord(
-            vehicleId: vehicleId,
-            odometerReading: data['odometerReading'] as double,
-            recordedAt: now,
-          ),
-        );
-        break;
-
-      case VehicleDataType.fuelRefill:
-        notifier.addFuelRecord(
-          FuelRecord(
-            vehicleId: vehicleId,
-            fuelAmount: data['fuelAmount'] as double,
-            totalCost: data['fuelPrice'] as double,
-            recordedAt: now,
-          ),
-        );
-        break;
-
-      case VehicleDataType.service:
-        notifier.addServiceRecord(
-          ServiceRecord(
-            vehicleId: vehicleId,
-            description: data['description'] as String,
-            recordedAt: now,
-          ),
-        );
-        break;
-    }
   }
 
   // ─────────────────────────────────────────────
@@ -300,7 +243,7 @@ class VehicleDetailsScreen extends ConsumerWidget {
       title: vehicle.model,
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDataSheet(context, ref),
+        onPressed: () => _addRecord(context),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Record'),
       ),
