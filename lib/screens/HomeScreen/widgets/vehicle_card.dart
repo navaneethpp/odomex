@@ -8,6 +8,7 @@ class VehicleCard extends StatelessWidget {
   final VoidCallback? onView;
   final VoidCallback? onAdd;
   final VoidCallback? onLongPress;
+  final VoidCallback? onActions;
 
   const VehicleCard({
     super.key,
@@ -16,12 +17,14 @@ class VehicleCard extends StatelessWidget {
     this.onView,
     this.onAdd,
     this.onLongPress,
+    this.onActions,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final actionsCallback = onActions ?? onLongPress;
 
     return Semantics(
       label:
@@ -31,7 +34,7 @@ class VehicleCard extends StatelessWidget {
         elevation: AppSizes.elevationSm,
         child: InkWell(
           onTap: onView,
-          onLongPress: onLongPress,
+          onLongPress: actionsCallback,
           borderRadius: BorderRadius.circular(
             AppSizes.radiusLg,
           ),
@@ -87,6 +90,11 @@ class VehicleCard extends StatelessWidget {
                   onPressed: onView,
                   icon: const Icon(Icons.visibility_outlined),
                   tooltip: 'View vehicle',
+                ),
+                IconButton(
+                  onPressed: actionsCallback,
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'Vehicle actions',
                 ),
               ],
             ),

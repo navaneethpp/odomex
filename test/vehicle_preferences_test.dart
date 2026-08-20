@@ -5,9 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
 import 'package:odomex/data/local/data_sources/vehicle_preferences_local_data_source.dart';
+import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
+import 'package:odomex/data/local/data_sources/vehicle_settings_local_data_source.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/features/vehicle_preferences/models/vehicle_preferences.dart';
+import 'package:odomex/features/vehicle_preferences/widgets/confirm_remove_vehicle_dialog.dart';
 import 'package:odomex/features/vehicle_preferences/widgets/vehicle_action_sheet.dart';
+import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
+import 'package:odomex/features/vehicle_settings/models/vehicle_settings.dart';
+import 'package:odomex/features/vehicle_settings/providers/vehicle_settings_provider.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_preferences_provider.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
@@ -67,6 +74,70 @@ class FakeVehiclePreferencesLocalDataSource
   @override
   Future<void> deletePreference(String vehicleId) async {
     _prefs.remove(vehicleId);
+  }
+}
+
+class FakeVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
+  final List<VehicleRecord> _records = [];
+
+  @override
+  Future<void> addRecord(VehicleRecord record) async {
+    _records.add(record);
+  }
+
+  @override
+  Future<void> deleteRecordsForVehicle(String vehicleId) async {
+    _records.removeWhere((r) => r.vehicleId == vehicleId);
+  }
+
+  @override
+  List<VehicleRecord> getAllRecords(String vehicleId) =>
+      _records.where((r) => r.vehicleId == vehicleId).toList();
+
+  @override
+  List<FuelRecord> getFuelRecords(String vehicleId) =>
+      _records.whereType<FuelRecord>().where((r) => r.vehicleId == vehicleId).toList();
+
+  @override
+  List<OilChangeRecord> getOilChangeRecords(String vehicleId) =>
+      _records.whereType<OilChangeRecord>().where((r) => r.vehicleId == vehicleId).toList();
+
+  @override
+  List<OdometerRecord> getOdometerRecords(String vehicleId) =>
+      _records.whereType<OdometerRecord>().where((r) => r.vehicleId == vehicleId).toList();
+
+  @override
+  List<VehicleRecord> getRecentRecords(String vehicleId, {int limit = 10}) =>
+      getAllRecords(vehicleId).take(limit).toList();
+
+  @override
+  List<VehicleRecord> getRecordsByDateRange(
+          String vehicleId, DateTime startDate, DateTime endDate) =>
+      getAllRecords(vehicleId);
+
+  @override
+  List<ServiceRecord> getServiceRecords(String vehicleId) =>
+      _records.whereType<ServiceRecord>().where((r) => r.vehicleId == vehicleId).toList();
+
+  @override
+  Future<void> seedInitialRecords(List<VehicleRecord> records) async {}
+}
+
+class FakeVehicleSettingsLocalDataSource
+    implements VehicleSettingsLocalDataSource {
+  final Map<String, VehicleSettings> _settings = {};
+
+  @override
+  Future<void> deleteSettings(String vehicleId) async {
+    _settings.remove(vehicleId);
+  }
+
+  @override
+  VehicleSettings? getSettings(String vehicleId) => _settings[vehicleId];
+
+  @override
+  Future<void> saveSettings(VehicleSettings settings) async {
+    _settings[settings.vehicleId] = settings;
   }
 }
 
@@ -158,20 +229,15 @@ void main() {
 
       final sorted = VehicleNotifier.sort(vehicles, prefs);
 
-      // Pinned group (vA accessed yesterday, vB accessed 2 days ago)
-      // Unpinned group (vC accessed today)
-      // Final order: vA, vB, vC
       expect(sorted.map((v) => v.id).toList(), ['vA', 'vB', 'vC']);
     });
 
     test('pinning unpinned vehicle dynamically moves it to top', () {
       final vehicles = [vehicleA, vehicleB, vehicleC];
 
-      // Initially all unpinned: vC (today), vA (yesterday), vB (2 days ago)
       var sorted = VehicleNotifier.sort(vehicles, {});
       expect(sorted.map((v) => v.id).toList(), ['vC', 'vA', 'vB']);
 
-      // User pins vB
       final prefs = {
         'vB': const VehiclePreferences(vehicleId: 'vB', isPinned: true),
       };
@@ -180,8 +246,8 @@ void main() {
     });
   });
 
-  group('VehicleCard & HomeScreen Widget Tests', () {
-    testWidgets('VehicleCard displays push pin icon when pinned',
+  group('VehicleCard & Contextual Action Menu Widget Tests', () {
+    testWidgets('VehicleCard displays push pin icon when pinned and three-dot menu button',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -197,9 +263,33 @@ void main() {
 
       expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
       expect(find.text('Activa 5G'), findsOneWidget);
+      expect(find.byIcon(Icons.more_vert), findsOneWidget);
     });
 
-    testWidgets('Long press on VehicleCard triggers action sheet with Pin/Unpin',
+    testWidgets('Tapping three-dot button triggers onActions callback',
+        (tester) async {
+      bool actionsTriggered = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VehicleCard(
+              vehicle: vehicleA,
+              isPinned: false,
+              onActions: () => actionsTriggered = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(actionsTriggered, true);
+    });
+
+    testWidgets('Long press on VehicleCard triggers action sheet',
         (tester) async {
       bool longPressed = false;
 
@@ -222,9 +312,10 @@ void main() {
       expect(longPressed, true);
     });
 
-    testWidgets('VehicleActionSheet displays Pin Vehicle for unpinned vehicle',
+    testWidgets('VehicleActionSheet displays Pin, Remove, and Cancel actions',
         (tester) async {
       bool pinToggled = false;
+      bool removeTriggered = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -233,6 +324,7 @@ void main() {
               vehicle: vehicleA,
               isPinned: false,
               onTogglePin: () => pinToggled = true,
+              onRemove: () => removeTriggered = true,
             ),
           ),
         ),
@@ -240,40 +332,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Pin Vehicle'), findsOneWidget);
+      expect(find.text('Remove Vehicle'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Honda Activa 5G'), findsOneWidget);
       expect(find.text('KL 10 AB 1234'), findsOneWidget);
 
       await tester.tap(find.text('Pin Vehicle'));
-      await tester.pumpAndSettle();
-
       expect(pinToggled, true);
     });
 
-    testWidgets('VehicleActionSheet displays Unpin Vehicle for pinned vehicle',
+    testWidgets('VehicleActionSheet triggers onRemove when Remove Vehicle is tapped',
         (tester) async {
+      bool removeTriggered = false;
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: VehicleActionSheet(
               vehicle: vehicleA,
-              isPinned: true,
+              isPinned: false,
               onTogglePin: () {},
+              onRemove: () => removeTriggered = true,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Unpin Vehicle'), findsOneWidget);
-      expect(find.text('Remove from the top of your vehicle list'),
-          findsOneWidget);
+      await tester.tap(find.text('Remove Vehicle'));
+      expect(removeTriggered, true);
     });
 
-    testWidgets('HomeScreen renders vehicle list and long press triggers actions',
+    testWidgets('ConfirmRemoveVehicleDialog shows vehicle details and buttons',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ConfirmRemoveVehicleDialog(
+              vehicle: vehicleA,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove Vehicle?'), findsOneWidget);
+      expect(find.textContaining('Honda Activa 5G (KL 10 AB 1234)'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Remove'), findsOneWidget);
+    });
+
+    testWidgets('HomeScreen renders vehicle list and three-dot opens action sheet to remove vehicle',
         (tester) async {
       final fakeVehicleDataSource =
           FakeVehicleLocalDataSource([vehicleA, vehicleB]);
       final fakePrefsDataSource = FakeVehiclePreferencesLocalDataSource();
+      final fakeRecordDataSource = FakeVehicleRecordLocalDataSource();
+      final fakeSettingsDataSource = FakeVehicleSettingsLocalDataSource();
 
       await tester.pumpWidget(
         ProviderScope(
@@ -282,6 +397,10 @@ void main() {
                 .overrideWithValue(fakeVehicleDataSource),
             vehiclePreferencesLocalDataSourceProvider
                 .overrideWithValue(fakePrefsDataSource),
+            vehicleRecordLocalDataSourceProvider
+                .overrideWithValue(fakeRecordDataSource),
+            vehicleSettingsLocalDataSourceProvider
+                .overrideWithValue(fakeSettingsDataSource),
           ],
           child: const MaterialApp(
             home: HomeScreen(),
@@ -294,18 +413,26 @@ void main() {
       expect(find.text('Activa 5G'), findsOneWidget);
       expect(find.text('Duke 200'), findsOneWidget);
 
-      // Long press on Activa 5G
-      await tester.longPress(find.text('Activa 5G'));
+      // Tap three-dot menu on first vehicle
+      await tester.tap(find.byIcon(Icons.more_vert).first);
       await tester.pumpAndSettle();
 
       expect(find.text('Pin Vehicle'), findsOneWidget);
+      expect(find.text('Remove Vehicle'), findsOneWidget);
 
-      // Tap Pin Vehicle
-      await tester.tap(find.text('Pin Vehicle'));
+      // Tap Remove Vehicle -> opens confirmation dialog
+      await tester.tap(find.text('Remove Vehicle'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Vehicle pinned'), findsOneWidget);
-      expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
+      expect(find.text('Remove Vehicle?'), findsOneWidget);
+
+      // Confirm Remove
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vehicle removed'), findsOneWidget);
+      expect(find.text('Activa 5G'), findsNothing);
+      expect(find.text('Duke 200'), findsOneWidget);
     });
   });
 }

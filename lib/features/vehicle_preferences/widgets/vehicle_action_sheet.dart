@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
 
-/// Contextual bottom sheet displayed on long-pressing a vehicle card.
+/// Contextual bottom sheet displayed on tapping the menu button or long-pressing a vehicle card.
 class VehicleActionSheet extends StatelessWidget {
   const VehicleActionSheet({
     super.key,
     required this.vehicle,
     required this.isPinned,
     required this.onTogglePin,
+    required this.onRemove,
   });
 
   final Vehicle vehicle;
   final bool isPinned;
   final VoidCallback onTogglePin;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +112,39 @@ class VehicleActionSheet extends StatelessWidget {
               },
             ),
 
+            // Remove Vehicle Action (Destructive)
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(AppSizes.paddingSm),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: colorScheme.error,
+                  size: AppSizes.iconMd,
+                ),
+              ),
+              title: Text(
+                'Remove Vehicle',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.error,
+                ),
+              ),
+              subtitle: Text(
+                'Delete vehicle and its historical records',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onRemove();
+              },
+            ),
+
             // Cancel Action
             ListTile(
               leading: Container(
@@ -145,6 +180,7 @@ Future<void> showVehicleActionSheet({
   required Vehicle vehicle,
   required bool isPinned,
   required VoidCallback onTogglePin,
+  required VoidCallback onRemove,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -158,6 +194,7 @@ Future<void> showVehicleActionSheet({
       vehicle: vehicle,
       isPinned: isPinned,
       onTogglePin: onTogglePin,
+      onRemove: onRemove,
     ),
   );
 }
