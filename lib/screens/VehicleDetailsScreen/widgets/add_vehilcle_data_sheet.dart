@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle_data_type.dart';
 
-class AddVehicleDataSheet extends StatefulWidget {
+/// Bottom sheet for adding a vehicle data record (odometer update, fuel
+/// refill, or service log).
+///
+/// The [vehicleId] identifies which vehicle the record belongs to.
+/// After validation, [onSave] is called with the record type and a
+/// data map — the caller (VehicleDetailsScreen) routes this to the
+/// appropriate Riverpod provider call.
+class AddVehicleDataSheet extends ConsumerStatefulWidget {
   const AddVehicleDataSheet({
     super.key,
+    required this.vehicleId,
     required this.onSave,
   });
+
+  final String vehicleId;
 
   final void Function(
     VehicleDataType type,
     Map<String, dynamic> data,
-  )
-  onSave;
+  ) onSave;
 
   @override
-  State<AddVehicleDataSheet> createState() =>
+  ConsumerState<AddVehicleDataSheet> createState() =>
       _AddVehicleDataSheetState();
 }
 
-class _AddVehicleDataSheetState
-    extends State<AddVehicleDataSheet> {
+class _AddVehicleDataSheetState extends ConsumerState<AddVehicleDataSheet> {
   VehicleDataType _selectedType = VehicleDataType.odometer;
 
   final _formKey = GlobalKey<FormState>();
@@ -28,8 +38,7 @@ class _AddVehicleDataSheetState
   final _odometerController = TextEditingController();
   final _fuelAmountController = TextEditingController();
   final _fuelPriceController = TextEditingController();
-  final _serviceDescriptionController =
-      TextEditingController();
+  final _serviceDescriptionController = TextEditingController();
 
   @override
   void dispose() {
@@ -37,74 +46,51 @@ class _AddVehicleDataSheetState
     _fuelAmountController.dispose();
     _fuelPriceController.dispose();
     _serviceDescriptionController.dispose();
-
     super.dispose();
   }
 
-  String _getTypeName(VehicleDataType type) {
-    switch (type) {
-      case VehicleDataType.odometer:
-        return 'Odometer Reading';
-
-      case VehicleDataType.fuelRefill:
-        return 'Petrol Refilling';
-
-      case VehicleDataType.service:
-        return 'Service Update';
-    }
-  }
-
   void _save() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     Map<String, dynamic> data;
 
     switch (_selectedType) {
       case VehicleDataType.odometer:
         data = {
-          'odometerReading': double.parse(
-            _odometerController.text,
-          ),
+          'odometerReading': double.parse(_odometerController.text.trim()),
         };
         break;
 
       case VehicleDataType.fuelRefill:
         data = {
-          'fuelAmount': double.parse(
-            _fuelAmountController.text,
-          ),
-          'fuelPrice': double.parse(
-            _fuelPriceController.text,
-          ),
+          'fuelAmount': double.parse(_fuelAmountController.text.trim()),
+          'fuelPrice': double.parse(_fuelPriceController.text.trim()),
         };
         break;
 
       case VehicleDataType.service:
         data = {
-          'description': _serviceDescriptionController.text
-              .trim(),
+          'description': _serviceDescriptionController.text.trim(),
         };
         break;
     }
 
     widget.onSave(_selectedType, data);
-
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: AppSizes.spacingLg,
-          right: AppSizes.spacingLg,
-          top: AppSizes.spacingLg,
-          bottom:
-              MediaQuery.of(context).viewInsets.bottom +
-              AppSizes.spacingLg,
+          left: AppSizes.paddingLg,
+          right: AppSizes.paddingLg,
+          top: AppSizes.paddingMd,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.paddingXl,
         ),
         child: Form(
           key: _formKey,
@@ -113,60 +99,44 @@ class _AddVehicleDataSheetState
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // ── Header ──
                 Text(
-                  'Add Vehicle Data',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-
-                const SizedBox(height: AppSizes.spacingLg),
-
-                Text(
-                  'Data Type',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium,
-                ),
-
-                const SizedBox(height: AppSizes.spacingSm),
-
-                DropdownButtonFormField<VehicleDataType>(
-                  initialValue: _selectedType,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                  'Add Record',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  items: VehicleDataType.values
-                      .map(
-                        (type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(_getTypeName(type)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
+                ),
 
-                    setState(() {
-                      _selectedType = value;
-                    });
-                  },
+                const SizedBox(height: AppSizes.spacingXs),
+
+                Text(
+                  'Select what you want to record for this vehicle.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
 
                 const SizedBox(height: AppSizes.spacingLg),
 
+                // ── Record type chips ──
+                _RecordTypeSelector(
+                  selected: _selectedType,
+                  onSelected: (type) => setState(() => _selectedType = type),
+                ),
+
+                const SizedBox(height: AppSizes.spacingXl),
+
+                // ── Contextual form ──
                 _buildForm(),
 
                 const SizedBox(height: AppSizes.spacingXl),
 
+                // ── Save button ──
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _save,
-                    child: const Text('Save'),
+                    child: const Text('Save Record'),
                   ),
                 ),
               ],
@@ -181,10 +151,8 @@ class _AddVehicleDataSheetState
     switch (_selectedType) {
       case VehicleDataType.odometer:
         return _buildOdometerForm();
-
       case VehicleDataType.fuelRefill:
         return _buildFuelForm();
-
       case VehicleDataType.service:
         return _buildServiceForm();
     }
@@ -193,21 +161,19 @@ class _AddVehicleDataSheetState
   Widget _buildOdometerForm() {
     return TextFormField(
       controller: _odometerController,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+      ],
+      autofocus: true,
       decoration: const InputDecoration(
-        labelText: 'Current Odometer',
+        labelText: 'Current Odometer *',
         suffixText: 'km',
-        hintText: 'Enter current odometer reading',
+        hintText: 'e.g. 25000',
       ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Enter the odometer reading';
-        }
-
-        if (double.tryParse(value) == null) {
-          return 'Enter a valid number';
-        }
-
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) return 'Enter the odometer reading.';
+        if (double.tryParse(v.trim()) == null) return 'Enter a valid number.';
         return null;
       },
     );
@@ -218,24 +184,19 @@ class _AddVehicleDataSheetState
       children: [
         TextFormField(
           controller: _fuelAmountController,
-          keyboardType:
-              const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          ],
+          autofocus: true,
           decoration: const InputDecoration(
-            labelText: 'Fuel Amount',
+            labelText: 'Fuel Amount *',
             suffixText: 'L',
-            hintText: 'Enter fuel quantity',
+            hintText: 'e.g. 10.5',
           ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Enter fuel amount';
-            }
-
-            if (double.tryParse(value) == null) {
-              return 'Enter a valid amount';
-            }
-
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Enter the fuel amount.';
+            if (double.tryParse(v.trim()) == null) return 'Enter a valid amount.';
             return null;
           },
         ),
@@ -244,24 +205,18 @@ class _AddVehicleDataSheetState
 
         TextFormField(
           controller: _fuelPriceController,
-          keyboardType:
-              const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          ],
           decoration: const InputDecoration(
-            labelText: 'Fuel Cost',
+            labelText: 'Total Cost *',
             prefixText: '₹ ',
-            hintText: 'Enter total fuel cost',
+            hintText: 'e.g. 920',
           ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Enter fuel cost';
-            }
-
-            if (double.tryParse(value) == null) {
-              return 'Enter a valid amount';
-            }
-
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Enter the total cost.';
+            if (double.tryParse(v.trim()) == null) return 'Enter a valid amount.';
             return null;
           },
         ),
@@ -273,19 +228,129 @@ class _AddVehicleDataSheetState
     return TextFormField(
       controller: _serviceDescriptionController,
       maxLines: 4,
+      autofocus: true,
+      textCapitalization: TextCapitalization.sentences,
       decoration: const InputDecoration(
-        labelText: 'Service Details',
-        hintText:
-            'Describe the service or maintenance performed',
+        labelText: 'Service Details *',
+        hintText: 'Describe the service or maintenance performed',
         alignLabelWithHint: true,
       ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Enter service details';
-        }
-
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) return 'Enter service details.';
         return null;
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// RECORD TYPE SELECTOR
+// ─────────────────────────────────────────────
+
+class _RecordTypeItem {
+  final VehicleDataType type;
+  final IconData icon;
+  final String label;
+
+  const _RecordTypeItem(this.type, this.icon, this.label);
+}
+
+const _recordTypes = [
+  _RecordTypeItem(VehicleDataType.odometer, Icons.speed_rounded, 'Odometer'),
+  _RecordTypeItem(VehicleDataType.fuelRefill, Icons.local_gas_station_rounded, 'Fuel Refill'),
+  _RecordTypeItem(VehicleDataType.service, Icons.build_rounded, 'Service'),
+];
+
+class _RecordTypeSelector extends StatelessWidget {
+  final VehicleDataType selected;
+  final ValueChanged<VehicleDataType> onSelected;
+
+  const _RecordTypeSelector({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: _recordTypes
+          .map((item) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: item == _recordTypes.last ? 0 : AppSizes.spacingSm,
+                  ),
+                  child: _RecordTypeChip(
+                    item: item,
+                    isSelected: item.type == selected,
+                    onTap: () => onSelected(item.type),
+                  ),
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
+class _RecordTypeChip extends StatelessWidget {
+  final _RecordTypeItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RecordTypeChip({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final bgColor = isSelected
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHighest;
+    final fgColor = isSelected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSizes.paddingMd,
+        ),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+          border: isSelected
+              ? Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.5),
+                  width: AppSizes.borderWidth,
+                )
+              : null,
+        ),
+        child: Column(
+          children: [
+            Icon(item.icon, size: AppSizes.iconMd, color: fgColor),
+            const SizedBox(height: AppSizes.spacingXs),
+            Text(
+              item.label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: fgColor,
+                fontWeight:
+                    isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

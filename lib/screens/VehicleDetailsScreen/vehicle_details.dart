@@ -1,370 +1,396 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/core/utils/vehicle_status.dart';
+import 'package:odomex/models/fuel_record.dart';
+import 'package:odomex/models/odometer_record.dart';
+import 'package:odomex/models/service_record.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/models/vehicle_data_type.dart';
+import 'package:odomex/providers/vehicle_provider.dart';
+import 'package:odomex/providers/vehicle_record_provider.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/add_vehilcle_data_sheet.dart';
-import 'package:odomex/screens/VehicleDetailsScreen/widgets/responsive_info_card.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/alerts_card.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/compliance_card.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/info_list_card.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/maintenance_card.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/odometer_hero_card.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/widgets/section_title.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/status_overview_grid.dart';
+import 'package:odomex/screens/VehicleDetailsScreen/widgets/vehicle_header_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
-class VehicleDetailsScreen extends StatelessWidget {
+/// Vehicle Details dashboard — loads vehicle state from Riverpod by ID.
+///
+/// Accepts [vehicleId] rather than a [Vehicle] object so that it always
+/// reflects the most up-to-date state: if the vehicle is updated elsewhere
+/// in the app, this screen automatically rebuilds.
+///
+/// Information hierarchy:
+///   1. Vehicle Header      — which vehicle am I looking at?
+///   2. Odometer Hero       — current status (most important number)
+///   3. Status Overview     — 2×2 health grid at a glance
+///   4. Alerts              — anything requiring immediate attention
+///   5. Maintenance         — oil change + service details
+///   6. Documents           — insurance + PUC with expiry status
+///   7. Vehicle Info        — static specifications
+///   8. Engine Info         — fuel / displacement
+class VehicleDetailsScreen extends ConsumerWidget {
   const VehicleDetailsScreen({
     super.key,
-    required this.vehicle,
+    required this.vehicleId,
   });
 
-  final Vehicle vehicle;
+  final String vehicleId;
+
+  // ─────────────────────────────────────────────
+  // DATE / NUMBER HELPERS
+  // ─────────────────────────────────────────────
 
   static final DateFormat _dateFormat = DateFormat('d MMMM yyyy');
+  static final NumberFormat _numFmt = NumberFormat.decimalPattern('en_IN');
 
-  String _formatDate(DateTime? date) {
+  String _fmtDate(DateTime? date) {
     if (date == null) return '—';
     return _dateFormat.format(date);
   }
 
-  void _handleVehicleData(
-    BuildContext context,
-    VehicleDataType type,
-    Map<String, dynamic> data,
-  ) {
-    switch (type) {
-      case VehicleDataType.odometer:
-        final odometer = data['odometerReading'];
-        debugPrint('New odometer: $odometer km');
-        break;
+  // ─────────────────────────────────────────────
+  // ALERT CONSTRUCTION
+  // ─────────────────────────────────────────────
 
-      case VehicleDataType.fuelRefill:
-        final amount = data['fuelAmount'];
-        final price = data['fuelPrice'];
-        debugPrint('Fuel: $amount L - ₹$price');
-        break;
+  List<VehicleAlert> _buildAlerts(Vehicle vehicle) {
+    final alerts = <VehicleAlert>[];
 
-      case VehicleDataType.service:
-        final description = data['description'];
-        debugPrint('Service: $description');
-        break;
+    // Oil change
+    final oilStatus = calculateOilChangeStatus(vehicle);
+    final next = vehicle.nextOilChangeOdometer;
+    if (oilStatus == MaintenanceStatus.due) {
+      alerts.add(const VehicleAlert(
+        icon: Icons.oil_barrel_outlined,
+        title: 'Oil change is overdue',
+        subtitle: 'Current reading has passed the service interval.',
+        severity: AlertSeverity.critical,
+      ));
+    } else if (oilStatus == MaintenanceStatus.dueSoon && next != null) {
+      final remaining = next - vehicle.odometerReading;
+      alerts.add(VehicleAlert(
+        icon: Icons.oil_barrel_outlined,
+        title: 'Oil change due soon',
+        subtitle: '${_numFmt.format(remaining)} km remaining.',
+      ));
     }
+
+    // Service
+    final svcStatus = calculateServiceStatus(vehicle);
+    final nextSvc = vehicle.nextServiceOdometer;
+    if (svcStatus == MaintenanceStatus.due) {
+      alerts.add(const VehicleAlert(
+        icon: Icons.build_circle_outlined,
+        title: 'Service is overdue',
+        subtitle: 'Current reading has passed the service milestone.',
+        severity: AlertSeverity.critical,
+      ));
+    } else if (svcStatus == MaintenanceStatus.dueSoon && nextSvc != null) {
+      final remaining = nextSvc - vehicle.odometerReading;
+      alerts.add(VehicleAlert(
+        icon: Icons.build_circle_outlined,
+        title: 'Service due soon',
+        subtitle: '${_numFmt.format(remaining)} km remaining.',
+      ));
+    }
+
+    // Insurance
+    if (vehicle.hasInsurance) {
+      final insStatus = calculateDocumentStatus(vehicle.insuranceEndDate);
+      if (insStatus == DocumentStatus.expired) {
+        alerts.add(VehicleAlert(
+          icon: Icons.shield_outlined,
+          title: 'Insurance has expired',
+          subtitle: _fmtDate(vehicle.insuranceEndDate),
+          severity: AlertSeverity.critical,
+        ));
+      } else if (insStatus == DocumentStatus.expiringSoon &&
+          vehicle.insuranceEndDate != null) {
+        final days = daysUntilExpiry(vehicle.insuranceEndDate!);
+        alerts.add(VehicleAlert(
+          icon: Icons.shield_outlined,
+          title: 'Insurance expires in $days ${days == 1 ? 'day' : 'days'}',
+          subtitle: _fmtDate(vehicle.insuranceEndDate),
+        ));
+      }
+    }
+
+    // PUC
+    if (vehicle.hasPuc) {
+      final pucStatus = calculateDocumentStatus(vehicle.pucEndDate);
+      if (pucStatus == DocumentStatus.expired) {
+        alerts.add(VehicleAlert(
+          icon: Icons.verified_outlined,
+          title: 'PUC has expired',
+          subtitle: _fmtDate(vehicle.pucEndDate),
+          severity: AlertSeverity.critical,
+        ));
+      } else if (pucStatus == DocumentStatus.expiringSoon &&
+          vehicle.pucEndDate != null) {
+        final days = daysUntilExpiry(vehicle.pucEndDate!);
+        alerts.add(VehicleAlert(
+          icon: Icons.verified_outlined,
+          title: 'PUC expires in $days ${days == 1 ? 'day' : 'days'}',
+          subtitle: _fmtDate(vehicle.pucEndDate),
+        ));
+      }
+    }
+
+    return alerts;
   }
 
-  void _showAddDataSheet(BuildContext context) {
+  // ─────────────────────────────────────────────
+  // STATUS SUBTITLE HELPERS
+  // ─────────────────────────────────────────────
+
+  String _oilChangeSubtitle(Vehicle vehicle) {
+    final next = vehicle.nextOilChangeOdometer;
+    if (next == null) return 'Unknown';
+    final remaining = next - vehicle.odometerReading;
+    if (remaining <= 0) return 'Due now';
+    return '${_numFmt.format(remaining)} km left';
+  }
+
+  String _serviceSubtitle(Vehicle vehicle) {
+    final next = vehicle.nextServiceOdometer;
+    if (next == null) return 'Unknown';
+    final remaining = next - vehicle.odometerReading;
+    if (remaining <= 0) return 'Due now';
+    return '${_numFmt.format(remaining)} km left';
+  }
+
+  String _insuranceSubtitle(Vehicle vehicle) {
+    final status = vehicle.hasInsurance
+        ? calculateDocumentStatus(vehicle.insuranceEndDate)
+        : DocumentStatus.notAvailable;
+    if (status == DocumentStatus.notAvailable) return 'Not added';
+    if (status == DocumentStatus.expiringSoon &&
+        vehicle.insuranceEndDate != null) {
+      final days = daysUntilExpiry(vehicle.insuranceEndDate!);
+      return 'Exp. in $days d';
+    }
+    return documentStatusLabel(status);
+  }
+
+  String _pucSubtitle(Vehicle vehicle) {
+    final status = vehicle.hasPuc
+        ? calculateDocumentStatus(vehicle.pucEndDate)
+        : DocumentStatus.notAvailable;
+    if (status == DocumentStatus.notAvailable) return 'Not added';
+    if (status == DocumentStatus.expiringSoon && vehicle.pucEndDate != null) {
+      final days = daysUntilExpiry(vehicle.pucEndDate!);
+      return 'Exp. in $days d';
+    }
+    return documentStatusLabel(status);
+  }
+
+  // ─────────────────────────────────────────────
+  // ACTIONS
+  // ─────────────────────────────────────────────
+
+  void _showAddDataSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (context) {
-        return AddVehicleDataSheet(
-          onSave: (type, data) {
-            _handleVehicleData(context, type, data);
-          },
-        );
-      },
+      builder: (sheetContext) => AddVehicleDataSheet(
+        vehicleId: vehicleId,
+        onSave: (type, data) =>
+            _handleVehicleData(ref, type, data),
+      ),
     );
   }
 
+  void _handleVehicleData(
+    WidgetRef ref,
+    VehicleDataType type,
+    Map<String, dynamic> data,
+  ) {
+    final notifier = ref.read(vehicleRecordProvider.notifier);
+    final now = DateTime.now();
+
+    switch (type) {
+      case VehicleDataType.odometer:
+        notifier.addOdometerRecord(
+          OdometerRecord(
+            vehicleId: vehicleId,
+            odometerReading: data['odometerReading'] as double,
+            recordedAt: now,
+          ),
+        );
+        break;
+
+      case VehicleDataType.fuelRefill:
+        notifier.addFuelRecord(
+          FuelRecord(
+            vehicleId: vehicleId,
+            fuelAmount: data['fuelAmount'] as double,
+            totalCost: data['fuelPrice'] as double,
+            recordedAt: now,
+          ),
+        );
+        break;
+
+      case VehicleDataType.service:
+        notifier.addServiceRecord(
+          ServiceRecord(
+            vehicleId: vehicleId,
+            description: data['description'] as String,
+            recordedAt: now,
+          ),
+        );
+        break;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicle = ref.watch(vehicleByIdProvider(vehicleId));
+
+    // Guard: vehicle may have been removed while this screen was open.
+    if (vehicle == null) {
+      return ScreenContainer(
+        title: 'Vehicle',
+        showBackButton: true,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.no_crash_outlined,
+                size: AppSizes.iconXl * 2,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: AppSizes.spacingLg),
+              Text(
+                'Vehicle not found',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final alerts = _buildAlerts(vehicle);
+    final oilStatus = calculateOilChangeStatus(vehicle);
+    final svcStatus = calculateServiceStatus(vehicle);
+    final insStatus = vehicle.hasInsurance
+        ? calculateDocumentStatus(vehicle.insuranceEndDate)
+        : DocumentStatus.notAvailable;
+    final pucStatus = vehicle.hasPuc
+        ? calculateDocumentStatus(vehicle.pucEndDate)
+        : DocumentStatus.notAvailable;
+
     return ScreenContainer(
       title: vehicle.model,
       showBackButton: true,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddDataSheet(context);
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddDataSheet(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Record'),
       ),
       child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 100),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Current Odometer (highlighted) ──
-            ResponsiveInfoCard(
-              subtitleValue: 'Current Odometer',
-              titleValue: '${vehicle.odometerReading} km',
-              centerAlign: true,
+            // ── 1. Vehicle Header ──────────────────────
+            VehicleHeaderCard(vehicle: vehicle),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── 2. Odometer Hero ───────────────────────
+            OdometerHeroCard(odometerReading: vehicle.odometerReading),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── 3. Status Overview ─────────────────────
+            const SectionTitle(title: 'Vehicle Status'),
+
+            StatusOverviewGrid(
+              oilChangeStatus: oilStatus,
+              oilChangeSubtitle: _oilChangeSubtitle(vehicle),
+              serviceStatus: svcStatus,
+              serviceSubtitle: _serviceSubtitle(vehicle),
+              insuranceStatus: insStatus,
+              insuranceSubtitle: _insuranceSubtitle(vehicle),
+              pucStatus: pucStatus,
+              pucSubtitle: _pucSubtitle(vehicle),
             ),
 
             const SizedBox(height: AppSizes.spacingLg),
 
-            // ── Vehicle Information ──
+            // ── 4. Alerts ──────────────────────────────
+            AlertsCard(alerts: alerts),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── 5. Maintenance ─────────────────────────
+            const SectionTitle(title: 'Maintenance'),
+            MaintenanceCard(vehicle: vehicle),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── 6. Documents & Compliance ──────────────
+            const SectionTitle(title: 'Documents & Compliance'),
+            ComplianceCard(vehicle: vehicle),
+
+            const SizedBox(height: AppSizes.spacingLg),
+
+            // ── 7. Vehicle Information ─────────────────
             const SectionTitle(title: 'Vehicle Information'),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Brand',
-                    titleValue: vehicle.brand.displayName,
-                  ),
-                ),
-
-                const SizedBox(width: AppSizes.spacingLg),
-
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Model',
-                    titleValue: vehicle.model,
-                  ),
-                ),
+            InfoListCard(
+              rows: [
+                InfoRow(label: 'Brand', value: vehicle.brand.displayName),
+                InfoRow(
+                    label: 'Year',
+                    value: vehicle.manufacturingYear.toString()),
+                InfoRow(
+                    label: 'Registration',
+                    value: vehicle.registrationNumber,
+                    fullWidth: true),
+                InfoRow(label: 'Color', value: vehicle.color),
+                InfoRow(
+                    label: 'Purchase Date',
+                    value: _fmtDate(vehicle.purchaseDate)),
               ],
             ),
 
             const SizedBox(height: AppSizes.spacingLg),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Year',
-                    titleValue: vehicle.manufacturingYear.toString(),
-                  ),
-                ),
-
-                const SizedBox(width: AppSizes.spacingLg),
-
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Registration',
-                    titleValue: vehicle.registrationNumber,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSizes.spacingLg),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Color',
-                    titleValue: vehicle.color,
-                  ),
-                ),
-
-                const SizedBox(width: AppSizes.spacingLg),
-
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Purchase Date',
-                    titleValue: _formatDate(vehicle.purchaseDate),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSizes.spacingLg),
-
-            // ── Engine Information ──
+            // ── 8. Engine Information ──────────────────
             const SectionTitle(title: 'Engine Information'),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Fuel Type',
-                    titleValue: vehicle.fuelType,
-                  ),
-                ),
-
-                const SizedBox(width: AppSizes.spacingLg),
-
-                Expanded(
-                  child: ResponsiveInfoCard(
-                    subtitleValue: 'Engine Capacity',
-                    titleValue: vehicle.engineCapacity != null
-                        ? '${vehicle.engineCapacity} cc'
-                        : 'N/A',
-                  ),
+            InfoListCard(
+              rows: [
+                InfoRow(label: 'Fuel Type', value: vehicle.fuelType),
+                InfoRow(
+                  label: 'Engine',
+                  value: vehicle.engineCapacity != null
+                      ? '${vehicle.engineCapacity} cc'
+                      : 'Electric',
                 ),
               ],
             ),
 
-            const SizedBox(height: AppSizes.spacingLg),
-
-            // ── Service Information ──
-            if (vehicle.lastServiceDate != null ||
-                vehicle.nextServiceOdometer != null) ...[
-              const SectionTitle(title: 'Service Information'),
-
-              Row(
-                children: [
-                  if (vehicle.lastServiceDate != null)
-                    Expanded(
-                      child: ResponsiveInfoCard(
-                        subtitleValue: 'Last Service Date',
-                        titleValue: _formatDate(vehicle.lastServiceDate),
-                      ),
-                    ),
-
-                  if (vehicle.lastServiceDate != null &&
-                      vehicle.nextServiceOdometer != null)
-                    const SizedBox(width: AppSizes.spacingLg),
-
-                  if (vehicle.nextServiceOdometer != null)
-                    Expanded(
-                      child: ResponsiveInfoCard(
-                        subtitleValue: 'Next Service',
-                        titleValue: '${vehicle.nextServiceOdometer} km',
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-            ],
-
-            // ── Insurance ──
-            if (vehicle.hasInsurance) ...[
-              const SectionTitle(title: 'Insurance'),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Provider',
-                      titleValue: vehicle.insuranceProvider ?? '—',
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSizes.spacingLg),
-
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Policy Number',
-                      titleValue: vehicle.insurancePolicyNumber ?? '—',
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Start Date',
-                      titleValue: _formatDate(vehicle.insuranceStartDate),
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSizes.spacingLg),
-
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'End Date',
-                      titleValue: _formatDate(vehicle.insuranceEndDate),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-            ],
-
-            // ── PUC ──
-            if (vehicle.hasPuc) ...[
-              const SectionTitle(title: 'PUC — Pollution Under Control'),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Certificate Number',
-                      titleValue: vehicle.pucCertificateNumber ?? '—',
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Start Date',
-                      titleValue: _formatDate(vehicle.pucStartDate),
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSizes.spacingLg),
-
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'End Date',
-                      titleValue: _formatDate(vehicle.pucEndDate),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-            ],
-
-            // ── Oil Change ──
-            if (vehicle.hasOilChange) ...[
-              const SectionTitle(title: 'Oil Change'),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Last Oil Change',
-                      titleValue: _formatDate(vehicle.lastOilChangeDate),
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSizes.spacingLg),
-
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Interval',
-                      titleValue: vehicle.oilChangeInterval != null
-                          ? '${vehicle.oilChangeInterval!.toStringAsFixed(0)} km'
-                          : '—',
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Last Oil Change At',
-                      titleValue: vehicle.lastOilChangeOdometer != null
-                          ? '${vehicle.lastOilChangeOdometer!.toStringAsFixed(0)} km'
-                          : '—',
-                    ),
-                  ),
-
-                  const SizedBox(width: AppSizes.spacingLg),
-
-                  Expanded(
-                    child: ResponsiveInfoCard(
-                      subtitleValue: 'Next Oil Change',
-                      titleValue: vehicle.nextOilChangeOdometer != null
-                          ? '${vehicle.nextOilChangeOdometer!.toStringAsFixed(0)} km'
-                          : '—',
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSizes.spacingLg),
-            ],
+            const SizedBox(height: AppSizes.spacingXl),
           ],
         ),
       ),
     );
   }
 }
-
-/// TODO:
-/// Currently the Add Data sheet has no logic — data is only printed to the
-/// debug console. Implement persistence (e.g. update odometer, record fuel
-/// refill, log service) once a storage layer is introduced.

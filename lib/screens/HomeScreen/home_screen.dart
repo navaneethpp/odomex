@@ -1,83 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
-import 'package:odomex/repositories/vehicles_repository.dart';
+import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/HomeScreen/widgets/vehicle_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
-class HomeScreen extends StatefulWidget {
+/// Home screen — displays all vehicles from the [vehicleProvider].
+///
+/// Automatically rebuilds when the vehicle list changes (e.g. after a vehicle
+/// is added via [AddVehicleScreen]). No manual setState() or list refresh
+/// needed.
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  List<Vehicle> _vehicles = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVehicles();
-  }
-
-  void _loadVehicles() {
-    setState(() {
-      _vehicles = VehiclesRepository.instance.getVehicles();
-    });
-  }
 
   void _viewVehicle(BuildContext context, Vehicle vehicle) {
     Navigator.pushNamed(
       context,
       AppRoutes.vehicleDetails,
-      arguments: vehicle,
+      // Pass only the ID — VehicleDetailsScreen fetches up-to-date state
+      // from Riverpod rather than working from a potentially stale object.
+      arguments: vehicle.id,
     );
   }
 
-  /// Navigate to Add Vehicle screen and refresh the list when it returns.
-  Future<void> _addVehicle(BuildContext context) async {
-    final added = await Navigator.pushNamed(context, AppRoutes.addVehicle);
-    if (added == true) {
-      _loadVehicles();
-    }
+  void _addVehicle(BuildContext context) {
+    // No need to await a return value: Riverpod automatically notifies
+    // HomeScreen when a new vehicle is added in AddVehicleScreen.
+    Navigator.pushNamed(context, AppRoutes.addVehicle);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicles = ref.watch(vehicleProvider);
+
     return ScreenContainer(
       title: 'Available Vehicles',
       showBackButton: false,
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _addVehicle(context);
-        },
+        onPressed: () => _addVehicle(context),
         child: const Icon(Icons.add),
       ),
 
-      child: _vehicles.isEmpty
+      child: vehicles.isEmpty
           ? _buildEmptyState(context)
           : ListView.separated(
-              itemCount: _vehicles.length,
+              itemCount: vehicles.length,
 
-              separatorBuilder: (context, index) {
-                return const SizedBox(height: AppSizes.spacingMd);
-              },
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: AppSizes.spacingMd),
 
               itemBuilder: (context, index) {
-                final vehicle = _vehicles[index];
+                final vehicle = vehicles[index];
 
                 return VehicleCard(
                   vehicle: vehicle,
 
-                  onView: () {
-                    _viewVehicle(context, vehicle);
-                  },
+                  onView: () => _viewVehicle(context, vehicle),
 
                   onAdd: () {
-                    // TODO: Add vehicle data action (odometer, fuel, service)
+                    // Opens Add Record sheet via Vehicle Details.
+                    _viewVehicle(context, vehicle);
                   },
                 );
               },

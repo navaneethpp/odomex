@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/core/utils/puc_utils.dart';
 import 'package:odomex/core/validation/vehicle_validators.dart';
 import 'package:odomex/models/vehicle.dart';
-import 'package:odomex/repositories/vehicles_repository.dart';
+import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/calculated_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/form_section_card.dart';
@@ -19,14 +20,14 @@ import 'package:odomex/widgets/screen_container.dart';
 ///   4. Insurance (optional; all fields required if any are filled)
 ///   5. PUC — Pollution Under Control (optional; all fields required if any filled)
 ///   6. Oil Change (optional; all fields required if any filled)
-class AddVehicleScreen extends StatefulWidget {
+class AddVehicleScreen extends ConsumerStatefulWidget {
   const AddVehicleScreen({super.key});
 
   @override
-  State<AddVehicleScreen> createState() => _AddVehicleScreenState();
+  ConsumerState<AddVehicleScreen> createState() => _AddVehicleScreenState();
 }
 
-class _AddVehicleScreenState extends State<AddVehicleScreen> {
+class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Scroll controller used to scroll toward the first invalid field.
@@ -261,10 +262,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           _hasAnyOilChangeInput ? _lastOilChangeDate : null,
     );
 
-    VehiclesRepository.instance.addVehicle(vehicle);
+    // Add to Riverpod — HomeScreen rebuilds automatically via vehicleProvider.
+    ref.read(vehicleProvider.notifier).addVehicle(vehicle);
 
-    // Return true so HomeScreen knows to refresh its list.
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) Navigator.pop(context);
   }
 
   // ─────────────────────────────────────────────

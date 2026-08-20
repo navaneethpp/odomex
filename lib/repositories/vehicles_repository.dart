@@ -1,25 +1,46 @@
-import 'package:odomex/data/vehicles.dart';
 import 'package:odomex/models/vehicle.dart';
 
 /// In-memory repository for vehicles.
 ///
-/// Seeded with the existing mock vehicle data from [Vehicles.vehicles].
-/// This is intentionally a simple in-memory implementation; it can later be
-/// replaced with a persistent backend (SQLite, Hive, REST API, etc.) without
-/// changing the rest of the app — only this class needs to change.
+/// This class is deliberately free of singletons and static state — it is
+/// created and owned by the Riverpod [vehiclesRepositoryProvider] so it can
+/// be overridden in tests or replaced with a persistent implementation later.
+///
+/// Responsibility boundary:
+///   - Stores and retrieves [Vehicle] objects.
+///   - Does NOT notify listeners; that is the provider's job.
 class VehiclesRepository {
-  VehiclesRepository._();
+  VehiclesRepository({List<Vehicle>? initial})
+      : _vehicles = initial != null ? List.of(initial) : [];
 
-  /// Singleton instance.
-  static final VehiclesRepository instance = VehiclesRepository._();
+  final List<Vehicle> _vehicles;
 
-  final List<Vehicle> _vehicles = List.of(Vehicles.vehicles);
+  /// Returns an unmodifiable snapshot of all vehicles.
+  List<Vehicle> getAll() => List.unmodifiable(_vehicles);
 
-  /// Returns an unmodifiable snapshot of the current vehicle list.
-  List<Vehicle> getVehicles() => List.unmodifiable(_vehicles);
+  /// Returns the vehicle with [id], or null if not found.
+  Vehicle? getById(String id) {
+    for (final v in _vehicles) {
+      if (v.id == id) return v;
+    }
+    return null;
+  }
 
-  /// Adds a new [vehicle] to the in-memory collection.
-  void addVehicle(Vehicle vehicle) {
+  /// Appends [vehicle] to the collection.
+  void add(Vehicle vehicle) {
     _vehicles.add(vehicle);
+  }
+
+  /// Replaces the vehicle whose [Vehicle.id] matches [vehicle.id].
+  /// Does nothing if no matching vehicle is found.
+  void update(Vehicle vehicle) {
+    final index = _vehicles.indexWhere((v) => v.id == vehicle.id);
+    if (index == -1) return;
+    _vehicles[index] = vehicle;
+  }
+
+  /// Removes the vehicle with [vehicleId].
+  void delete(String vehicleId) {
+    _vehicles.removeWhere((v) => v.id == vehicleId);
   }
 }
