@@ -315,7 +315,6 @@ void main() {
     testWidgets('VehicleActionSheet displays Pin, Remove, and Cancel actions',
         (tester) async {
       bool pinToggled = false;
-      bool removeTriggered = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -324,7 +323,7 @@ void main() {
               vehicle: vehicleA,
               isPinned: false,
               onTogglePin: () => pinToggled = true,
-              onRemove: () => removeTriggered = true,
+              onRemove: () {},
             ),
           ),
         ),

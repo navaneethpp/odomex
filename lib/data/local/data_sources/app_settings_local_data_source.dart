@@ -23,6 +23,12 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists [option] as the vehicle list sorting preference.
   Future<void> saveVehicleSortOption(VehicleSortOption option);
+
+  /// Returns whether the first-time onboarding has been completed.
+  bool isOnboardingCompleted();
+
+  /// Persists onboarding completion status.
+  Future<void> setOnboardingCompleted(bool completed);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -42,6 +48,7 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _themeModeKey = 'theme_mode';
   static const String _globalVehicleSettingsKey = 'global_vehicle_settings';
   static const String _vehicleSortOptionKey = 'vehicle_sort_option';
+  static const String _onboardingCompletedKey = 'onboarding_completed';
 
   @override
   AppThemeMode getThemeMode() {
@@ -100,6 +107,26 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
     final box = _settingsBox;
     if (box != null) {
       await box.put(_vehicleSortOptionKey, option.storageKey);
+    }
+  }
+
+  @override
+  bool isOnboardingCompleted() {
+    final box = _settingsBox;
+    if (box != null) {
+      final val = box.get(_onboardingCompletedKey);
+      if (val is bool) {
+        return val;
+      }
+    }
+    return false;
+  }
+
+  @override
+  Future<void> setOnboardingCompleted(bool completed) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_onboardingCompletedKey, completed);
     }
   }
 }

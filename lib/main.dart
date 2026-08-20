@@ -9,18 +9,10 @@ import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/data/local/hive_registrar.dart';
 import 'package:odomex/data/sample_vehicle_records.dart';
 import 'package:odomex/data/vehicles.dart';
-import 'package:odomex/features/settings/screens/settings_screen.dart';
-import 'package:odomex/features/vehicle_dashboard/screens/vehicle_dashboard_screen.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
-import 'package:odomex/features/vehicle_records/screens/vehicle_records_screen.dart';
-import 'package:odomex/features/vehicle_settings/screens/global_vehicle_settings_screen.dart';
-import 'package:odomex/features/vehicle_settings/screens/vehicle_settings_screen.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
-import 'package:odomex/screens/AddVehicleScreen/add_vehicle_screen.dart';
-import 'package:odomex/screens/HomeScreen/home_screen.dart';
-import 'package:odomex/screens/VehicleDetailsScreen/vehicle_details.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,47 +66,9 @@ class MainApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode.flutterThemeMode,
 
-      // Routing
-      initialRoute: AppRoutes.home,
-
-      routes: {
-        AppRoutes.home: (context) => const HomeScreen(),
-
-        // Primary individual vehicle screen (Daily dashboard)
-        AppRoutes.vehicleDashboard: (context) {
-          final vehicleId =
-              ModalRoute.of(context)!.settings.arguments as String;
-          return VehicleDashboardScreen(vehicleId: vehicleId);
-        },
-
-        // Vehicle-specific maintenance and reminder settings
-        AppRoutes.vehicleSettings: (context) {
-          final vehicleId =
-              ModalRoute.of(context)!.settings.arguments as String;
-          return VehicleSettingsScreen(vehicleId: vehicleId);
-        },
-
-        // Global vehicle defaults
-        AppRoutes.globalVehicleSettings: (context) =>
-            const GlobalVehicleSettingsScreen(),
-
-        // Deep vehicle specifications & compliance
-        AppRoutes.vehicleDetails: (context) {
-          final vehicleId =
-              ModalRoute.of(context)!.settings.arguments as String;
-          return VehicleDetailsScreen(vehicleId: vehicleId);
-        },
-
-        // Full vehicle records history
-        AppRoutes.vehicleRecords: (context) {
-          final vehicleId =
-              ModalRoute.of(context)!.settings.arguments as String;
-          return VehicleRecordsScreen(vehicleId: vehicleId);
-        },
-
-        AppRoutes.addVehicle: (context) => const AddVehicleScreen(),
-        AppRoutes.settings: (context) => const SettingsScreen(),
-      },
+      // Routing via AppStartupScreen at '/'
+      initialRoute: AppRoutes.root,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
 }

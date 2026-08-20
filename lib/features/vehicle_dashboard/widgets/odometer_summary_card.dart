@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/widgets/animated_odometer_text.dart';
 
-/// Prominent card highlighting the vehicle's current odometer reading.
+/// Prominent card highlighting the vehicle's current odometer reading with smooth count-up animation.
 class OdometerSummaryCard extends StatelessWidget {
   const OdometerSummaryCard({
     super.key,
@@ -12,7 +13,6 @@ class OdometerSummaryCard extends StatelessWidget {
 
   final Vehicle vehicle;
 
-  static final _numberFormat = NumberFormat('#,##0');
   static final _dateFormat = DateFormat('d MMM yyyy');
 
   String _updatedSubtitle() {
@@ -73,27 +73,18 @@ class OdometerSummaryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSizes.spacingSm),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        _numberFormat.format(vehicle.odometerReading),
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: colorScheme.onSurface,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.spacingXs),
-                      Text(
-                        'km',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ],
+                  AnimatedOdometerText(
+                    value: vehicle.odometerReading,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                    unit: 'km',
+                    unitStyle: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(height: AppSizes.spacingXs),
                   Text(

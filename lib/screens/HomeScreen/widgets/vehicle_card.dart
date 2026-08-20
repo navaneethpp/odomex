@@ -57,14 +57,20 @@ class VehicleCard extends StatelessWidget {
                             const SizedBox(width: AppSizes.spacingXs),
                           ],
                           Flexible(
-                            child: Text(
-                              vehicle.model,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: isPinned
-                                    ? FontWeight.w700
-                                    : FontWeight.w600,
+                            child: Hero(
+                              tag: 'vehicle_${vehicle.id}',
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: Text(
+                                  vehicle.model,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: isPinned
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

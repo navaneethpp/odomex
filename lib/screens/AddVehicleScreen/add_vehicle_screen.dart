@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/core/utils/puc_utils.dart';
 import 'package:odomex/core/validation/vehicle_validators.dart';
+import 'package:odomex/features/onboarding/providers/onboarding_provider.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
+import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/calculated_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/form_section_card.dart';
@@ -189,7 +191,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   // SAVE
   // ─────────────────────────────────────────────
 
-  void _save() {
+  Future<void> _save() async {
     if (_isSaving) return;
 
     // Rebuild so optional-section validators see the latest
@@ -262,10 +264,31 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           _hasAnyOilChangeInput ? _lastOilChangeDate : null,
     );
 
-    // Add to Riverpod — HomeScreen rebuilds automatically via vehicleProvider.
-    ref.read(vehicleProvider.notifier).addVehicle(vehicle);
+    try {
+      // Add to Riverpod & Hive persistence — HomeScreen rebuilds automatically via vehicleProvider.
+      await ref.read(vehicleProvider.notifier).addVehicle(vehicle);
 
-    if (mounted) Navigator.pop(context);
+      // Ensure onboarding is marked completed if it was first vehicle setup
+      await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
+
+      if (!mounted) return;
+
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't save your vehicle. Please try again."),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -274,11 +297,25 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenContainer(
-      title: 'Add Vehicle',
-      showBackButton: true,
-      child: Form(
-        key: _formKey,
+    return PopScope(
+      canPop: Navigator.canPop(context),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      },
+      child: ScreenContainer(
+        title: 'Add Vehicle',
+        showBackButton: true,
+        onBackPressed: () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushReplacementNamed(context, AppRoutes.home);
+          }
+        },
+        child: Form(
+          key: _formKey,
         child: SingleChildScrollView(
           controller: _scrollController,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -309,7 +346,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   // ─────────────────────────────────────────────

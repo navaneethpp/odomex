@@ -43,11 +43,17 @@ class DashboardHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                vehicle.model,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
+              Hero(
+                tag: 'vehicle_${vehicle.id}',
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Text(
+                    vehicle.model,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSizes.spacingXs),

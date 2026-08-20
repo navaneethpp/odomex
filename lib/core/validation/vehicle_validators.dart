@@ -183,7 +183,9 @@ String? validatePurchaseDate(
 }) {
   if (date == null) return 'Purchase date is required.';
   final today = DateTime.now();
-  if (date.isAfter(DateTime(today.year, today.month, today.day))) {
+  final dateOnly = DateTime(date.year, date.month, date.day);
+  final todayOnly = DateTime(today.year, today.month, today.day);
+  if (dateOnly.isAfter(todayOnly)) {
     return 'Purchase date cannot be in the future.';
   }
   if (manufacturingYear > 0 && date.year < manufacturingYear) {
@@ -292,7 +294,9 @@ String? validateOilChangeOdometer(
 String? validateLastOilChangeDate(DateTime? date) {
   if (date == null) return 'Last oil change date is required.';
   final today = DateTime.now();
-  if (date.isAfter(DateTime(today.year, today.month, today.day))) {
+  final dateOnly = DateTime(date.year, date.month, date.day);
+  final todayOnly = DateTime(today.year, today.month, today.day);
+  if (dateOnly.isAfter(todayOnly)) {
     return 'Last oil change date cannot be in the future.';
   }
   return null;

@@ -1,32 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/widgets/animated_odometer_text.dart';
 
-class ResponsiveInfoCard extends StatelessWidget {
-  final String subtitleValue;
-  final String? titleValue;
-  final Widget? customTitle;
-  final IconData? icon;
-  final Color? backgroundColor;
-  final bool centerAlign;
-
-  const ResponsiveInfoCard({
+/// Reusable animated card displaying a vehicle's odometer reading with count-up animation.
+class AnimatedOdometerCard extends StatelessWidget {
+  const AnimatedOdometerCard({
     super.key,
-    required this.subtitleValue,
-    this.titleValue,
-    this.customTitle,
+    required this.value,
+    this.subtitle = 'Current Odometer',
+    this.duration,
+    this.centerAlign = true,
     this.icon,
     this.backgroundColor,
-    this.centerAlign = false,
-  }) : assert(titleValue != null || customTitle != null,
-            'Either titleValue or customTitle must be provided');
+  });
+
+  /// Current odometer reading in km.
+  final double value;
+
+  /// Subtitle label (e.g. 'Current Odometer').
+  final String subtitle;
+
+  /// Custom animation duration.
+  final Duration? duration;
+
+  /// Whether text and contents are center-aligned.
+  final bool centerAlign;
+
+  /// Optional leading/header icon.
+  final IconData? icon;
+
+  /// Custom background color.
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final crossAxisAlignment =
-        centerAlign ? CrossAxisAlignment.center : CrossAxisAlignment.start;
+    final crossAxisAlignment = centerAlign
+        ? CrossAxisAlignment.center
+        : CrossAxisAlignment.start;
     final textAlign = centerAlign ? TextAlign.center : TextAlign.start;
 
     return SizedBox(
@@ -49,7 +62,7 @@ class ResponsiveInfoCard extends StatelessWidget {
                 const SizedBox(height: AppSizes.spacingSm),
               ],
               Text(
-                subtitleValue,
+                subtitle,
                 textAlign: textAlign,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
@@ -59,19 +72,19 @@ class ResponsiveInfoCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: AppSizes.spacingXs),
-              if (customTitle != null)
-                customTitle!
-              else
-                Text(
-                  titleValue!,
-                  textAlign: textAlign,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              AnimatedOdometerText(
+                value: value,
+                duration: duration,
+                unit: 'km',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
                 ),
+                unitStyle: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
