@@ -1,0 +1,99 @@
+import 'package:hive_ce/hive.dart';
+import 'package:odomex/models/vehicle.dart';
+
+/// Hive TypeAdapter for [Vehicle] model.
+///
+/// Encapsulates serialization of all vehicle specifications, document
+/// details, maintenance records, and access timestamps.
+///
+/// Uses indexed field mapping for forward and backward schema compatibility.
+class VehicleAdapter extends TypeAdapter<Vehicle> {
+  @override
+  final int typeId = 0;
+
+  @override
+  Vehicle read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+
+    return Vehicle(
+      id: fields[0] as String?,
+      brand: fields[1] as VehicleBrand? ?? VehicleBrand.honda,
+      model: fields[2] as String? ?? '',
+      manufacturingYear: fields[3] as int? ?? DateTime.now().year,
+      odometerReading: (fields[4] as num?)?.toDouble() ?? 0.0,
+      registrationNumber: fields[5] as String? ?? '',
+      color: fields[6] as String? ?? '',
+      fuelType: fields[7] as String? ?? 'Petrol',
+      engineCapacity: fields[8] as int?,
+      purchaseDate: fields[9] as DateTime? ?? DateTime.now(),
+      lastServiceDate: fields[10] as DateTime?,
+      nextServiceOdometer: (fields[11] as num?)?.toDouble(),
+      insuranceProvider: fields[12] as String?,
+      insurancePolicyNumber: fields[13] as String?,
+      insuranceStartDate: fields[14] as DateTime?,
+      insuranceEndDate: fields[15] as DateTime?,
+      pucCertificateNumber: fields[16] as String?,
+      pucStartDate: fields[17] as DateTime?,
+      pucEndDate: fields[18] as DateTime?,
+      oilChangeInterval: (fields[19] as num?)?.toDouble(),
+      lastOilChangeOdometer: (fields[20] as num?)?.toDouble(),
+      lastOilChangeDate: fields[21] as DateTime?,
+      lastAccessedAt: fields[22] as DateTime?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, Vehicle obj) {
+    writer
+      ..writeByte(23) // Total fields
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.brand)
+      ..writeByte(2)
+      ..write(obj.model)
+      ..writeByte(3)
+      ..write(obj.manufacturingYear)
+      ..writeByte(4)
+      ..write(obj.odometerReading)
+      ..writeByte(5)
+      ..write(obj.registrationNumber)
+      ..writeByte(6)
+      ..write(obj.color)
+      ..writeByte(7)
+      ..write(obj.fuelType)
+      ..writeByte(8)
+      ..write(obj.engineCapacity)
+      ..writeByte(9)
+      ..write(obj.purchaseDate)
+      ..writeByte(10)
+      ..write(obj.lastServiceDate)
+      ..writeByte(11)
+      ..write(obj.nextServiceOdometer)
+      ..writeByte(12)
+      ..write(obj.insuranceProvider)
+      ..writeByte(13)
+      ..write(obj.insurancePolicyNumber)
+      ..writeByte(14)
+      ..write(obj.insuranceStartDate)
+      ..writeByte(15)
+      ..write(obj.insuranceEndDate)
+      ..writeByte(16)
+      ..write(obj.pucCertificateNumber)
+      ..writeByte(17)
+      ..write(obj.pucStartDate)
+      ..writeByte(18)
+      ..write(obj.pucEndDate)
+      ..writeByte(19)
+      ..write(obj.oilChangeInterval)
+      ..writeByte(20)
+      ..write(obj.lastOilChangeOdometer)
+      ..writeByte(21)
+      ..write(obj.lastOilChangeDate)
+      ..writeByte(22)
+      ..write(obj.lastAccessedAt);
+  }
+}

@@ -1,18 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:odomex/data/vehicles.dart';
+import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/repositories/vehicles_repository.dart';
 
 // ─────────────────────────────────────────────
-// REPOSITORY PROVIDER
+// DATA SOURCE & REPOSITORY PROVIDERS
 // ─────────────────────────────────────────────
 
-/// Provides the [VehiclesRepository] instance, seeded with the local mock
-/// data. Screens and notifiers must never instantiate the repository directly;
+/// Provides the [VehicleLocalDataSource] backed by Hive.
+final vehicleLocalDataSourceProvider = Provider<VehicleLocalDataSource>((ref) {
+  return HiveVehicleLocalDataSource();
+});
+
+/// Provides the [VehiclesRepository] instance.
+///
+/// Screens and notifiers must never instantiate the repository directly;
 /// they should always read it through this provider so it can be overridden
 /// in tests or replaced with a persistent backend later.
 final vehiclesRepositoryProvider = Provider<VehiclesRepository>((ref) {
-  return VehiclesRepository(initial: Vehicles.vehicles);
+  final localDataSource = ref.watch(vehicleLocalDataSourceProvider);
+  return VehiclesRepository(localDataSource: localDataSource);
 });
 
 // ─────────────────────────────────────────────
@@ -25,13 +32,13 @@ final vehiclesRepositoryProvider = Provider<VehiclesRepository>((ref) {
 ///   - Vehicles with a [Vehicle.lastAccessedAt] timestamp appear first,
 ///     sorted descending (most recent at the top).
 ///   - Vehicles that have never been accessed ([Vehicle.lastAccessedAt] == null)
-///     appear after all accessed vehicles, in their original insertion order.
+///     appear after all accessed vehicles, in a stable ID order.
 ///
 /// All state mutations go through this notifier — widgets must never mutate
 /// the vehicle list directly.
 class VehicleNotifier extends StateNotifier<List<Vehicle>> {
   VehicleNotifier(this._repository) : super([]) {
-    // Initialise with a sorted snapshot of the seed data.
+    // Initialise with a sorted snapshot of the persisted vehicles.
     state = _sorted(_repository.getAll());
   }
 
@@ -58,7 +65,7 @@ class VehicleNotifier extends StateNotifier<List<Vehicle>> {
         // Both never accessed — maintain stable order by ID.
         return a.id.compareTo(b.id);
       }
-      if (aTime == null) return 1;  // a goes after b
+      if (aTime == null) return 1; // a goes after b
       if (bTime == null) return -1; // a goes before b
 
       // Both have timestamps — sort descending (most recent first).
@@ -76,21 +83,21 @@ class VehicleNotifier extends StateNotifier<List<Vehicle>> {
   // ─────────────────────────────────────────────
 
   /// Adds [vehicle] to the collection and returns its assigned [Vehicle.id].
-  String addVehicle(Vehicle vehicle) {
-    _repository.add(vehicle);
+  Future<String> addVehicle(Vehicle vehicle) async {
+    await _repository.add(vehicle);
     state = _sorted(_repository.getAll());
     return vehicle.id;
   }
 
   /// Replaces the existing vehicle whose id matches [vehicle.id].
-  void updateVehicle(Vehicle vehicle) {
-    _repository.update(vehicle);
+  Future<void> updateVehicle(Vehicle vehicle) async {
+    await _repository.update(vehicle);
     state = _sorted(_repository.getAll());
   }
 
   /// Removes the vehicle with [vehicleId] from the collection.
-  void removeVehicle(String vehicleId) {
-    _repository.delete(vehicleId);
+  Future<void> removeVehicle(String vehicleId) async {
+    await _repository.delete(vehicleId);
     state = _sorted(List.of(state.where((v) => v.id != vehicleId)));
   }
 
@@ -100,11 +107,6 @@ class VehicleNotifier extends StateNotifier<List<Vehicle>> {
   /// Updates [Vehicle.lastAccessedAt] to [DateTime.now()] and re-sorts the
   /// vehicle list so the accessed vehicle immediately rises to the top of
   /// HomeScreen.
-  ///
-  /// This method should be called from the UI layer *before* (or just after)
-  /// navigating to the Vehicle Details screen. It must NOT be called on
-  /// automatic rebuilds, scrolls, or any event other than an intentional
-  /// vehicle view.
   void markVehicleAsAccessed(String vehicleId) {
     final index = state.indexWhere((v) => v.id == vehicleId);
     if (index == -1) return;
@@ -113,7 +115,7 @@ class VehicleNotifier extends StateNotifier<List<Vehicle>> {
       lastAccessedAt: DateTime.now(),
     );
 
-    // Persist the update so the repository reflects the new timestamp.
+    // Persist the update to Hive.
     _repository.update(updated);
 
     // Rebuild state immutably and re-sort.
@@ -132,13 +134,6 @@ class VehicleNotifier extends StateNotifier<List<Vehicle>> {
 /// The list is always in most-recently-accessed-first order.
 /// Screens watch this provider to receive automatic rebuilds whenever the list
 /// changes (e.g. after adding a vehicle or marking one as accessed).
-///
-/// Usage:
-/// ```dart
-/// final vehicles = ref.watch(vehicleProvider);
-/// ref.read(vehicleProvider.notifier).addVehicle(vehicle);
-/// ref.read(vehicleProvider.notifier).markVehicleAsAccessed(vehicle.id);
-/// ```
 final vehicleProvider =
     StateNotifierProvider<VehicleNotifier, List<Vehicle>>((ref) {
   final repository = ref.watch(vehiclesRepositoryProvider);
@@ -155,12 +150,6 @@ final vehicleProvider =
 /// because the vehicle was updated via [VehicleNotifier.updateVehicle] or
 /// [VehicleNotifier.markVehicleAsAccessed]), the details screen watching this
 /// provider will rebuild automatically.
-///
-/// Usage:
-/// ```dart
-/// final vehicle = ref.watch(vehicleByIdProvider(vehicleId));
-/// if (vehicle == null) return _buildNotFound();
-/// ```
 final vehicleByIdProvider =
     Provider.family<Vehicle?, String>((ref, vehicleId) {
   final vehicles = ref.watch(vehicleProvider);

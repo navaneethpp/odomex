@@ -1,83 +1,52 @@
+import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 
-/// In-memory repository for all vehicle records.
+/// Repository for all vehicle records.
 ///
-/// Records are stored per-vehicle using the vehicle's [String] ID as the key.
-/// This class is owned by the Riverpod [vehicleRecordRepositoryProvider] and
-/// can later be swapped for a persistent implementation without touching
-/// providers or UI widgets.
-///
-/// Uses the sealed [VehicleRecord] hierarchy so that all record types are
-/// handled uniformly while still being individually type-safe via pattern
-/// matching.
+/// Backed by a [VehicleRecordLocalDataSource] (e.g. Hive). Provides polymorphic
+/// and type-specific query access for vehicle records while isolating
+/// providers and widgets from local database mechanics.
 class VehicleRecordsRepository {
-  VehicleRecordsRepository();
+  VehicleRecordsRepository({
+    required this.localDataSource,
+  });
 
-  // ── Storage ────────────────────────────────────────────────────────────────
-  //
-  // Each record type has its own typed list keyed by vehicleId. Keeping types
-  // separate makes type-specific queries (e.g. latest odometer) cheap and
-  // avoids casting at the call site.
+  final VehicleRecordLocalDataSource localDataSource;
 
-  final Map<String, List<OdometerRecord>> _odometer = {};
-  final Map<String, List<FuelRecord>> _fuel = {};
-  final Map<String, List<ServiceRecord>> _service = {};
-  final Map<String, List<OilChangeRecord>> _oilChange = {};
-
-  // ── Unified write ──────────────────────────────────────────────────────────
-
-  /// Adds [record] to the appropriate typed store.
-  ///
-  /// Uses exhaustive pattern matching so the analyser will flag any new
-  /// [VehicleRecord] subtype that is not yet handled here.
-  void addRecord(VehicleRecord record) {
-    switch (record) {
-      case OdometerRecord():
-        _odometer.putIfAbsent(record.vehicleId, () => []).add(record);
-      case FuelRecord():
-        _fuel.putIfAbsent(record.vehicleId, () => []).add(record);
-      case ServiceRecord():
-        _service.putIfAbsent(record.vehicleId, () => []).add(record);
-      case OilChangeRecord():
-        _oilChange.putIfAbsent(record.vehicleId, () => []).add(record);
-    }
+  /// Persists [record] into the local store.
+  Future<void> addRecord(VehicleRecord record) {
+    return localDataSource.addRecord(record);
   }
 
-  // ── Typed reads ────────────────────────────────────────────────────────────
-
+  /// Returns all odometer records for [vehicleId].
   List<OdometerRecord> getOdometerRecords(String vehicleId) =>
-      List.unmodifiable(_odometer[vehicleId] ?? []);
+      localDataSource.getOdometerRecords(vehicleId);
 
+  /// Returns all fuel records for [vehicleId].
   List<FuelRecord> getFuelRecords(String vehicleId) =>
-      List.unmodifiable(_fuel[vehicleId] ?? []);
+      localDataSource.getFuelRecords(vehicleId);
 
+  /// Returns all service records for [vehicleId].
   List<ServiceRecord> getServiceRecords(String vehicleId) =>
-      List.unmodifiable(_service[vehicleId] ?? []);
+      localDataSource.getServiceRecords(vehicleId);
 
+  /// Returns all oil change records for [vehicleId].
   List<OilChangeRecord> getOilChangeRecords(String vehicleId) =>
-      List.unmodifiable(_oilChange[vehicleId] ?? []);
+      localDataSource.getOilChangeRecords(vehicleId);
 
-  /// Returns all records for [vehicleId] as a flat list, sorted by date
-  /// descending (most recent first).
-  List<VehicleRecord> getAllRecords(String vehicleId) {
-    final all = <VehicleRecord>[
-      ...(_odometer[vehicleId] ?? []),
-      ...(_fuel[vehicleId] ?? []),
-      ...(_service[vehicleId] ?? []),
-      ...(_oilChange[vehicleId] ?? []),
-    ]..sort((a, b) => b.date.compareTo(a.date));
-    return List.unmodifiable(all);
+  /// Returns all records for [vehicleId] sorted by date descending.
+  List<VehicleRecord> getAllRecords(String vehicleId) =>
+      localDataSource.getAllRecords(vehicleId);
+
+  /// Returns the most recent [OdometerRecord] for [vehicleId], or null.
+  OdometerRecord? getLatestOdometerRecord(String vehicleId) {
+    final records = localDataSource.getOdometerRecords(vehicleId);
+    if (records.isEmpty) return null;
+    return records.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
   }
 
-  // ── Convenience queries ────────────────────────────────────────────────────
-
-  /// Returns the most recent [OdometerRecord] for [vehicleId], or null if
-  /// no odometer records exist.
-  OdometerRecord? getLatestOdometerRecord(String vehicleId) {
-    final records = _odometer[vehicleId];
-    if (records == null || records.isEmpty) return null;
-    return records.reduce(
-      (a, b) => a.date.isAfter(b.date) ? a : b,
-    );
+  /// Deletes all records for [vehicleId] (used during cascading vehicle deletion).
+  Future<void> deleteRecordsForVehicle(String vehicleId) {
+    return localDataSource.deleteRecordsForVehicle(vehicleId);
   }
 }

@@ -86,26 +86,49 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
     // 1. Add record to vehicle record state
     ref.read(vehicleRecordProvider.notifier).addRecord(record);
 
-    // 2. Update vehicle derived state (e.g. current odometer reading)
+    // 2. Update vehicle derived state (e.g. current odometer reading, last service/oil dates)
     final vehicle = ref.read(vehicleByIdProvider(widget.vehicleId));
     if (vehicle != null) {
-      if (record is OdometerRecord) {
-        if (record.odometer > vehicle.odometerReading) {
-          ref.read(vehicleProvider.notifier).updateVehicle(
-                vehicle.copyWith(odometerReading: record.odometer),
-              );
-        }
-      } else if (record is OilChangeRecord) {
-        final newOdo = record.odometerReading > vehicle.odometerReading
-            ? record.odometerReading
-            : vehicle.odometerReading;
-        ref.read(vehicleProvider.notifier).updateVehicle(
-              vehicle.copyWith(
-                odometerReading: newOdo,
-                lastOilChangeDate: record.date,
-                lastOilChangeOdometer: record.odometerReading,
-              ),
-            );
+      double? newOdometer;
+
+      switch (record) {
+        case OdometerRecord():
+          if (record.odometer > vehicle.odometerReading) {
+            newOdometer = record.odometer;
+          }
+        case FuelRecord():
+          if (record.odometerReading != null &&
+              record.odometerReading! > vehicle.odometerReading) {
+            newOdometer = record.odometerReading;
+          }
+        case ServiceRecord():
+          if (record.odometerReading != null &&
+              record.odometerReading! > vehicle.odometerReading) {
+            newOdometer = record.odometerReading;
+          }
+        case OilChangeRecord():
+          if (record.odometerReading > vehicle.odometerReading) {
+            newOdometer = record.odometerReading;
+          }
+      }
+
+      var updatedVehicle = vehicle;
+      if (newOdometer != null) {
+        updatedVehicle = updatedVehicle.copyWith(odometerReading: newOdometer);
+      }
+      if (record is OilChangeRecord) {
+        updatedVehicle = updatedVehicle.copyWith(
+          lastOilChangeDate: record.date,
+          lastOilChangeOdometer: record.odometerReading,
+        );
+      } else if (record is ServiceRecord) {
+        updatedVehicle = updatedVehicle.copyWith(
+          lastServiceDate: record.date,
+        );
+      }
+
+      if (updatedVehicle != vehicle) {
+        ref.read(vehicleProvider.notifier).updateVehicle(updatedVehicle);
       }
     }
 

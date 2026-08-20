@@ -1,46 +1,30 @@
+import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
 import 'package:odomex/models/vehicle.dart';
 
-/// In-memory repository for vehicles.
+/// Repository for vehicle data.
 ///
-/// This class is deliberately free of singletons and static state — it is
-/// created and owned by the Riverpod [vehiclesRepositoryProvider] so it can
-/// be overridden in tests or replaced with a persistent implementation later.
-///
-/// Responsibility boundary:
-///   - Stores and retrieves [Vehicle] objects.
-///   - Does NOT notify listeners; that is the provider's job.
+/// Backed by a [VehicleLocalDataSource] (e.g. Hive). Provides clean access
+/// to vehicles while isolating Riverpod notifiers and UI components from
+/// direct database dependencies.
 class VehiclesRepository {
-  VehiclesRepository({List<Vehicle>? initial})
-      : _vehicles = initial != null ? List.of(initial) : [];
+  VehiclesRepository({
+    required this.localDataSource,
+  });
 
-  final List<Vehicle> _vehicles;
+  final VehicleLocalDataSource localDataSource;
 
-  /// Returns an unmodifiable snapshot of all vehicles.
-  List<Vehicle> getAll() => List.unmodifiable(_vehicles);
+  /// Returns all vehicles currently stored.
+  List<Vehicle> getAll() => localDataSource.getVehicles();
 
   /// Returns the vehicle with [id], or null if not found.
-  Vehicle? getById(String id) {
-    for (final v in _vehicles) {
-      if (v.id == id) return v;
-    }
-    return null;
-  }
+  Vehicle? getById(String id) => localDataSource.getVehicle(id);
 
-  /// Appends [vehicle] to the collection.
-  void add(Vehicle vehicle) {
-    _vehicles.add(vehicle);
-  }
+  /// Persists a new [vehicle].
+  Future<void> add(Vehicle vehicle) => localDataSource.addVehicle(vehicle);
 
-  /// Replaces the vehicle whose [Vehicle.id] matches [vehicle.id].
-  /// Does nothing if no matching vehicle is found.
-  void update(Vehicle vehicle) {
-    final index = _vehicles.indexWhere((v) => v.id == vehicle.id);
-    if (index == -1) return;
-    _vehicles[index] = vehicle;
-  }
+  /// Updates an existing [vehicle].
+  Future<void> update(Vehicle vehicle) => localDataSource.updateVehicle(vehicle);
 
-  /// Removes the vehicle with [vehicleId].
-  void delete(String vehicleId) {
-    _vehicles.removeWhere((v) => v.id == vehicleId);
-  }
+  /// Deletes the vehicle with [vehicleId].
+  Future<void> delete(String vehicleId) => localDataSource.deleteVehicle(vehicleId);
 }

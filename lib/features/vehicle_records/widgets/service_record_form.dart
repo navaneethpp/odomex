@@ -6,15 +6,14 @@ import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
-/// Form for logging a service or maintenance event.
+/// Form for logging a service or maintenance event with comprehensive validation.
 ///
 /// Fields:
-///   - Service type (dropdown, required)
-///   - Custom description when "Other" is selected (required in that case)
-///   - Date (required, no future dates)
-///   - Odometer reading (optional)
-///   - Cost (optional)
-///   - Description / notes (always shown, required for all types)
+///   - Service type (required)
+///   - Service date (required, no future dates)
+///   - Service odometer (required, numeric, >= 0, >= currentVehicleOdometer)
+///   - Service cost (required, numeric, >= 0)
+///   - Description (required, min 5 chars, max 1000 chars)
 class ServiceRecordForm extends StatefulWidget {
   const ServiceRecordForm({
     super.key,
@@ -34,7 +33,7 @@ class _ServiceRecordFormState
     extends VehicleRecordFormState<ServiceRecordForm> {
   final _formKey = GlobalKey<FormState>();
   ServiceType _serviceType = ServiceType.generalService;
-  DateTime? _date;
+  DateTime? _date = DateTime.now();
   final _odometerController = TextEditingController();
   final _costController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -52,6 +51,7 @@ class _ServiceRecordFormState
     if (!_formKey.currentState!.validate()) return null;
     final odometerText = _odometerController.text.trim();
     final costText = _costController.text.trim();
+
     return ServiceRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
@@ -66,6 +66,10 @@ class _ServiceRecordFormState
 
   @override
   Widget build(BuildContext context) {
+    final odoHint = widget.currentOdometer != null
+        ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
+        : 'e.g. 25000';
+
     return Form(
       key: _formKey,
       child: Column(
@@ -85,6 +89,7 @@ class _ServiceRecordFormState
                       child: Text(t.displayName),
                     ))
                 .toList(),
+            validator: (v) => v == null ? 'Please select a service type.' : null,
             onChanged: (t) {
               if (t != null) setState(() => _serviceType = t);
             },
@@ -98,7 +103,7 @@ class _ServiceRecordFormState
             selectedDate: _date,
             disableFutureDates: true,
             onDateSelected: (d) => setState(() => _date = d),
-            validator: validateRecordDate,
+            validator: (d) => validateRecordDate(d, fieldName: 'Service date'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
@@ -114,14 +119,17 @@ class _ServiceRecordFormState
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'Odometer',
+                  decoration: InputDecoration(
+                    labelText: 'Odometer *',
                     suffixText: 'km',
-                    hintText: 'Optional',
+                    hintText: odoHint,
                   ),
-                  validator: (v) => v != null && v.trim().isNotEmpty
-                      ? validateOdometer(v)
-                      : null,
+                  validator: (v) => validateRecordOdometer(
+                    v,
+                    currentVehicleOdometer: widget.currentOdometer,
+                    required: true,
+                    fieldName: 'Service odometer',
+                  ),
                 ),
               ),
 
@@ -136,12 +144,11 @@ class _ServiceRecordFormState
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Cost',
+                    labelText: 'Service Cost *',
                     prefixText: '₹ ',
-                    hintText: 'Optional',
+                    hintText: 'e.g. 1250',
                   ),
-                  validator: (v) =>
-                      validateCost(v, required: false),
+                  validator: (v) => validateServiceCost(v, required: true),
                 ),
               ),
             ],
@@ -157,19 +164,14 @@ class _ServiceRecordFormState
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               labelText: _serviceType == ServiceType.other
-                  ? 'Description *'
-                  : 'Description / Notes',
+                  ? 'Custom Service Description *'
+                  : 'Service Details / Description *',
               hintText: _serviceType == ServiceType.other
-                  ? 'Describe the service performed'
-                  : 'Additional details (optional)',
+                  ? 'Describe the specific service performed (min 5 chars)'
+                  : 'e.g. Engine oil change, air filter replacement (min 5 chars)',
               alignLabelWithHint: true,
             ),
-            validator: (v) {
-              if (_serviceType == ServiceType.other) {
-                return validateRequired(v, 'a description');
-              }
-              return null; // optional for other types
-            },
+            validator: (v) => validateServiceDescription(v, required: true),
           ),
         ],
       ),

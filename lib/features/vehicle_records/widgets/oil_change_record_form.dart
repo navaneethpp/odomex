@@ -6,15 +6,26 @@ import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
-/// Form for logging an oil change.
+/// Standard preset oil types.
+const _presetOilTypes = [
+  '10W-30',
+  '10W-40',
+  '5W-30',
+  '5W-40',
+  '15W-40',
+  '20W-50',
+  'Other',
+];
+
+/// Form for logging an oil change with comprehensive validation.
 ///
 /// Fields:
-///   - Odometer reading (required)
+///   - Odometer reading (required, >= 0, >= current vehicle odometer)
 ///   - Date (required, no future dates)
-///   - Oil type (optional, e.g. 10W-40)
-///   - Quantity (optional, in litres)
-///   - Cost (optional, in INR)
-///   - Notes (optional)
+///   - Oil type (required: preset dropdown or custom if "Other")
+///   - Quantity (required, in litres, > 0)
+///   - Cost (required, in INR, >= 0)
+///   - Notes (optional, max 500 chars)
 class OilChangeRecordForm extends StatefulWidget {
   const OilChangeRecordForm({
     super.key,
@@ -34,16 +45,19 @@ class _OilChangeRecordFormState
     extends VehicleRecordFormState<OilChangeRecordForm> {
   final _formKey = GlobalKey<FormState>();
   final _odometerController = TextEditingController();
-  DateTime? _date;
-  final _oilTypeController = TextEditingController();
+  DateTime? _date = DateTime.now();
+  String _selectedOilType = '10W-40';
+  final _customOilTypeController = TextEditingController();
   final _quantityController = TextEditingController();
   final _costController = TextEditingController();
   final _notesController = TextEditingController();
 
+  bool get _isCustomOilType => _selectedOilType == 'Other';
+
   @override
   void dispose() {
     _odometerController.dispose();
-    _oilTypeController.dispose();
+    _customOilTypeController.dispose();
     _quantityController.dispose();
     _costController.dispose();
     _notesController.dispose();
@@ -53,18 +67,18 @@ class _OilChangeRecordFormState
   @override
   OilChangeRecord? buildRecord() {
     if (!_formKey.currentState!.validate()) return null;
-    final quantityText = _quantityController.text.trim();
-    final costText = _costController.text.trim();
+
+    final resolvedOilType = _isCustomOilType
+        ? _customOilTypeController.text.trim()
+        : _selectedOilType;
 
     return OilChangeRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
       odometerReading: double.parse(_odometerController.text.trim()),
-      oilType: _oilTypeController.text.trim().isEmpty
-          ? null
-          : _oilTypeController.text.trim(),
-      quantity: quantityText.isNotEmpty ? double.tryParse(quantityText) : null,
-      cost: costText.isNotEmpty ? double.tryParse(costText) : null,
+      oilType: resolvedOilType,
+      quantity: double.parse(_quantityController.text.trim()),
+      cost: double.parse(_costController.text.trim()),
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
@@ -73,6 +87,10 @@ class _OilChangeRecordFormState
 
   @override
   Widget build(BuildContext context) {
+    final odoHint = widget.currentOdometer != null
+        ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
+        : 'e.g. 25000';
+
     return Form(
       key: _formKey,
       child: Column(
@@ -89,13 +107,12 @@ class _OilChangeRecordFormState
             decoration: InputDecoration(
               labelText: 'Odometer Reading *',
               suffixText: 'km',
-              hintText: widget.currentOdometer != null
-                  ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
-                  : 'e.g. 25000',
+              hintText: odoHint,
             ),
-            validator: (v) => validateOdometer(
+            validator: (v) => validateRecordOdometer(
               v,
-              currentOdometer: widget.currentOdometer,
+              currentVehicleOdometer: widget.currentOdometer,
+              required: true,
             ),
           ),
 
@@ -103,25 +120,52 @@ class _OilChangeRecordFormState
 
           // ── Date ──
           AppDateField(
-            labelText: 'Date *',
+            labelText: 'Oil Change Date *',
             selectedDate: _date,
             disableFutureDates: true,
             onDateSelected: (d) => setState(() => _date = d),
-            validator: validateRecordDate,
+            validator: (d) =>
+                validateRecordDate(d, fieldName: 'Oil change date'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
 
-          // ── Oil Type ──
-          TextFormField(
-            controller: _oilTypeController,
-            textCapitalization: TextCapitalization.characters,
+          // ── Oil Type Dropdown ──
+          DropdownButtonFormField<String>(
+            initialValue: _selectedOilType,
+            isExpanded: true,
             decoration: const InputDecoration(
-              labelText: 'Oil Type / Grade',
-              hintText: 'e.g. 10W-40, 20W-50',
+              labelText: 'Oil Type / Grade *',
               prefixIcon: Icon(Icons.oil_barrel_outlined),
             ),
+            items: _presetOilTypes
+                .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
+                    ))
+                .toList(),
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Please select an oil type.' : null,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _selectedOilType = val);
+              }
+            },
           ),
+
+          // ── Custom Oil Type (when "Other" selected) ──
+          if (_isCustomOilType) ...[
+            const SizedBox(height: AppSizes.spacingMd),
+            TextFormField(
+              controller: _customOilTypeController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'Specify Oil Type *',
+                hintText: 'e.g. 0W-20, Full Synthetic',
+              ),
+              validator: (v) => validateRequired(v, 'Custom oil type'),
+            ),
+          ],
 
           const SizedBox(height: AppSizes.spacingMd),
 
@@ -137,12 +181,11 @@ class _OilChangeRecordFormState
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Quantity',
+                    labelText: 'Quantity *',
                     suffixText: 'L',
                     hintText: 'e.g. 1.0',
                   ),
-                  validator: (v) =>
-                      validateOilQuantity(v, required: false),
+                  validator: (v) => validateOilQuantity(v, required: true),
                 ),
               ),
 
@@ -157,12 +200,11 @@ class _OilChangeRecordFormState
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Cost',
+                    labelText: 'Total Cost *',
                     prefixText: '₹ ',
                     hintText: 'e.g. 650',
                   ),
-                  validator: (v) =>
-                      validateCost(v, required: false),
+                  validator: (v) => validateOilCost(v, required: true),
                 ),
               ),
             ],
@@ -177,8 +219,9 @@ class _OilChangeRecordFormState
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Notes',
-              hintText: 'Optional notes or brand used',
+              hintText: 'Optional notes or brand used (max 500 chars)',
             ),
+            validator: validateNotes,
           ),
         ],
       ),

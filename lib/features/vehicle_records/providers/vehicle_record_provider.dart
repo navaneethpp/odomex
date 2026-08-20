@@ -1,10 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/repositories/vehicle_records_repository.dart';
 
 // ─────────────────────────────────────────────
-// REPOSITORY PROVIDER
+// DATA SOURCE & REPOSITORY PROVIDERS
 // ─────────────────────────────────────────────
+
+/// Provides the [VehicleRecordLocalDataSource] backed by Hive.
+final vehicleRecordLocalDataSourceProvider =
+    Provider<VehicleRecordLocalDataSource>((ref) {
+  return HiveVehicleRecordLocalDataSource();
+});
 
 /// Provides the [VehicleRecordsRepository] instance.
 ///
@@ -12,27 +19,26 @@ import 'package:odomex/features/vehicle_records/repositories/vehicle_records_rep
 /// overridden in tests.
 final vehicleRecordRepositoryProvider =
     Provider<VehicleRecordsRepository>((ref) {
-  return VehicleRecordsRepository();
+  final localDataSource = ref.watch(vehicleRecordLocalDataSourceProvider);
+  return VehicleRecordsRepository(localDataSource: localDataSource);
 });
 
 // ─────────────────────────────────────────────
 // STATE TYPE
 // ─────────────────────────────────────────────
 
-/// The complete record state: a map from vehicleId to an unordered list of all
+/// The complete record state: a map from vehicleId to a list of all
 /// typed [VehicleRecord] objects belonging to that vehicle.
 ///
 /// Widgets watch this map to be notified whenever any record is added for any
-/// vehicle. Vehicle-specific queries should use the typed accessors on the
-/// notifier rather than filtering the map directly.
+/// vehicle.
 typedef VehicleRecordState = Map<String, List<VehicleRecord>>;
 
 // ─────────────────────────────────────────────
 // NOTIFIER
 // ─────────────────────────────────────────────
 
-/// Manages in-memory vehicle records for all vehicles via the
-/// [VehicleRecordsRepository].
+/// Manages vehicle records for all vehicles backed by Hive persistence.
 ///
 /// ### Adding a record
 /// ```dart
@@ -60,13 +66,18 @@ class VehicleRecordNotifier extends StateNotifier<VehicleRecordState> {
 
   // ── Unified write ─────────────────────────────────────────────────────────
 
-  /// Adds [record] to the repository and updates state.
-  ///
-  /// This is the preferred entry point for all UI code. The repository uses
-  /// exhaustive pattern matching internally so no switch is needed here.
-  void addRecord(VehicleRecord record) {
-    _repository.addRecord(record);
+  /// Adds [record] to the repository and updates reactive state.
+  Future<void> addRecord(VehicleRecord record) async {
+    await _repository.addRecord(record);
     state = _stateAfterAdd(record.vehicleId);
+  }
+
+  /// Removes all records for [vehicleId] (used during cascading vehicle deletion).
+  Future<void> deleteRecordsForVehicle(String vehicleId) async {
+    await _repository.deleteRecordsForVehicle(vehicleId);
+    final newState = Map<String, List<VehicleRecord>>.of(state);
+    newState.remove(vehicleId);
+    state = newState;
   }
 
   // ── Typed reads ───────────────────────────────────────────────────────────
@@ -100,16 +111,6 @@ class VehicleRecordNotifier extends StateNotifier<VehicleRecordState> {
 ///
 /// Any widget watching this provider rebuilds whenever a record is added for
 /// any vehicle.
-///
-/// Usage:
-/// ```dart
-/// // Add a record:
-/// ref.read(vehicleRecordProvider.notifier).addRecord(record);
-///
-/// // Query records (read-only, no rebuild):
-/// final notifier = ref.read(vehicleRecordProvider.notifier);
-/// final records = notifier.getOdometerRecords(vehicleId);
-/// ```
 final vehicleRecordProvider = StateNotifierProvider<
     VehicleRecordNotifier, VehicleRecordState>((ref) {
   final repository = ref.watch(vehicleRecordRepositoryProvider);
@@ -122,17 +123,13 @@ final vehicleRecordProvider = StateNotifierProvider<
 
 /// Reactively provides all records for a specific vehicle, sorted by date
 /// descending.
-///
-/// Rebuilds whenever [vehicleRecordProvider] updates for any vehicle. If
-/// per-vehicle rebuild granularity becomes a performance concern, consider
-/// a family-scoped provider.
-///
-/// Usage:
-/// ```dart
-/// final records = ref.watch(recordsByVehicleProvider(vehicleId));
-/// ```
 final recordsByVehicleProvider =
     Provider.family<List<VehicleRecord>, String>((ref, vehicleId) {
   final state = ref.watch(vehicleRecordProvider);
-  return state[vehicleId] ?? const [];
+  if (state.containsKey(vehicleId)) {
+    return state[vehicleId]!;
+  }
+  // If not yet in state cache, fetch from repository.
+  final repository = ref.watch(vehicleRecordRepositoryProvider);
+  return repository.getAllRecords(vehicleId);
 });

@@ -6,15 +6,15 @@ import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
-/// Form for logging a fuel refill.
+/// Form for logging a fuel refill with comprehensive validation.
 ///
 /// Fields:
-///   - Fuel quantity (L, required)
-///   - Total cost (₹, required)
-///   - Odometer reading (optional)
+///   - Fuel quantity (L, required, > 0)
+///   - Total cost (₹, required, >= 0)
+///   - Odometer reading (required, >= 0, >= current vehicle odometer)
 ///   - Date (required, no future dates)
-///   - Fuel station (optional)
-///   - Notes (optional)
+///   - Fuel station (optional, max 100 chars)
+///   - Notes (optional, max 500 chars)
 class FuelRecordForm extends StatefulWidget {
   const FuelRecordForm({
     super.key,
@@ -35,7 +35,7 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   final _quantityController = TextEditingController();
   final _costController = TextEditingController();
   final _odometerController = TextEditingController();
-  DateTime? _date;
+  DateTime? _date = DateTime.now();
   final _stationController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -72,6 +72,10 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
   @override
   Widget build(BuildContext context) {
+    final odoHint = widget.currentOdometer != null
+        ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
+        : 'e.g. 25100';
+
     return Form(
       key: _formKey,
       child: Column(
@@ -90,9 +94,9 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Quantity *',
+                    labelText: 'Fuel Quantity *',
                     suffixText: 'L',
-                    hintText: 'e.g. 10.5',
+                    hintText: 'e.g. 5.2',
                   ),
                   validator: validateFuelQuantity,
                 ),
@@ -109,11 +113,11 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Total Cost *',
+                    labelText: 'Fuel Cost *',
                     prefixText: '₹ ',
-                    hintText: 'e.g. 920',
+                    hintText: 'e.g. 550',
                   ),
-                  validator: validateCost,
+                  validator: validateFuelCost,
                 ),
               ),
             ],
@@ -121,7 +125,7 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
           const SizedBox(height: AppSizes.spacingMd),
 
-          // ── Odometer (optional) ──
+          // ── Odometer (required) ──
           TextFormField(
             controller: _odometerController,
             keyboardType:
@@ -130,27 +134,26 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
             ],
             decoration: InputDecoration(
-              labelText: 'Odometer',
+              labelText: 'Odometer Reading *',
               suffixText: 'km',
-              hintText: widget.currentOdometer != null
-                  ? '${widget.currentOdometer!.toStringAsFixed(0)} km'
-                  : 'Optional',
+              hintText: odoHint,
             ),
-            // Odometer is optional for fuel records
-            validator: (v) => v != null && v.trim().isNotEmpty
-                ? validateOdometer(v)
-                : null,
+            validator: (v) => validateRecordOdometer(
+              v,
+              currentVehicleOdometer: widget.currentOdometer,
+              required: true,
+            ),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
 
           // ── Date ──
           AppDateField(
-            labelText: 'Date *',
+            labelText: 'Fuel Date *',
             selectedDate: _date,
             disableFutureDates: true,
             onDateSelected: (d) => setState(() => _date = d),
-            validator: validateRecordDate,
+            validator: (d) => validateRecordDate(d, fieldName: 'Fuel date'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
@@ -161,9 +164,10 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Fuel Station',
-              hintText: 'Optional',
+              hintText: 'e.g. Shell, IndianOil (optional)',
               prefixIcon: Icon(Icons.local_gas_station_outlined),
             ),
+            validator: (v) => validateMaxLength(v, 100, 'Fuel station'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
@@ -175,8 +179,9 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Notes',
-              hintText: 'Optional notes',
+              hintText: 'Optional notes (max 500 characters)',
             ),
+            validator: validateNotes,
           ),
         ],
       ),

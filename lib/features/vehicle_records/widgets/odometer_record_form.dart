@@ -6,15 +6,12 @@ import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
-/// Form for logging an odometer reading.
+/// Form for logging an odometer reading with comprehensive validation.
 ///
 /// Fields:
-///   - Current odometer (required)
+///   - Current odometer (required, numeric, >= 0, >= currentVehicleOdometer)
 ///   - Date (required, no future dates)
-///   - Notes (optional)
-///
-/// Call [buildRecord] via [GlobalKey<VehicleRecordFormState>] to validate and
-/// retrieve an [OdometerRecord].
+///   - Notes (optional, max 500 chars)
 class OdometerRecordForm extends StatefulWidget {
   const OdometerRecordForm({
     super.key,
@@ -25,7 +22,7 @@ class OdometerRecordForm extends StatefulWidget {
   /// The vehicle this record belongs to.
   final String vehicleId;
 
-  /// The vehicle's current known odometer (used as the input hint).
+  /// The vehicle's current known odometer (used for cross-field consistency).
   final double? currentOdometer;
 
   @override
@@ -37,7 +34,7 @@ class _OdometerRecordFormState
     extends VehicleRecordFormState<OdometerRecordForm> {
   final _formKey = GlobalKey<FormState>();
   final _odometerController = TextEditingController();
-  DateTime? _date;
+  DateTime? _date = DateTime.now();
   final _notesController = TextEditingController();
 
   @override
@@ -84,9 +81,9 @@ class _OdometerRecordFormState
               suffixText: 'km',
               hintText: hint,
             ),
-            validator: (v) => validateOdometer(
+            validator: (v) => validateRecordOdometer(
               v,
-              currentOdometer: widget.currentOdometer,
+              currentVehicleOdometer: widget.currentOdometer,
             ),
           ),
 
@@ -94,11 +91,11 @@ class _OdometerRecordFormState
 
           // ── Date ──
           AppDateField(
-            labelText: 'Date *',
+            labelText: 'Record Date *',
             selectedDate: _date,
             disableFutureDates: true,
             onDateSelected: (d) => setState(() => _date = d),
-            validator: validateRecordDate,
+            validator: (d) => validateRecordDate(d, fieldName: 'Record date'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
@@ -110,8 +107,9 @@ class _OdometerRecordFormState
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Notes',
-              hintText: 'Optional notes',
+              hintText: 'Optional notes (max 500 characters)',
             ),
+            validator: validateNotes,
           ),
         ],
       ),
