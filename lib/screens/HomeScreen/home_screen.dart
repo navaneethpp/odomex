@@ -15,7 +15,11 @@ import 'package:odomex/widgets/screen_container.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  void _viewVehicle(BuildContext context, Vehicle vehicle) {
+  void _viewVehicle(BuildContext context, WidgetRef ref, Vehicle vehicle) {
+    // Record the access BEFORE navigating so the list is already sorted
+    // correctly when the user returns via the back button.
+    ref.read(vehicleProvider.notifier).markVehicleAsAccessed(vehicle.id);
+
     Navigator.pushNamed(
       context,
       AppRoutes.vehicleDetails,
@@ -58,11 +62,11 @@ class HomeScreen extends ConsumerWidget {
                 return VehicleCard(
                   vehicle: vehicle,
 
-                  onView: () => _viewVehicle(context, vehicle),
+                  onView: () => _viewVehicle(context, ref, vehicle),
 
                   onAdd: () {
                     // Opens Add Record sheet via Vehicle Details.
-                    _viewVehicle(context, vehicle);
+                    _viewVehicle(context, ref, vehicle);
                   },
                 );
               },

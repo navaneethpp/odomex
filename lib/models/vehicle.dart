@@ -59,6 +59,9 @@ class Vehicle {
     this.oilChangeInterval,
     this.lastOilChangeOdometer,
     this.lastOilChangeDate,
+
+    // Access tracking
+    this.lastAccessedAt,
   }) : id = id ?? _generateId();
 
   // ─────────────────────────────────────────────
@@ -160,6 +163,20 @@ class Vehicle {
   final DateTime? lastOilChangeDate;
 
   // ─────────────────────────────────────────────
+  // ACCESS TRACKING
+  // ─────────────────────────────────────────────
+
+  /// The last time the user opened the Vehicle Details screen for this vehicle.
+  ///
+  /// Null for vehicles that have never been viewed since the app started.
+  /// Updated via [VehicleNotifier.markVehicleAsAccessed] — never set
+  /// automatically on creation or on data edits.
+  ///
+  /// When persistent storage is introduced, this field should be stored and
+  /// restored alongside the vehicle so that the access order survives restarts.
+  final DateTime? lastAccessedAt;
+
+  // ─────────────────────────────────────────────
   // COMPUTED PROPERTIES
   // ─────────────────────────────────────────────
 
@@ -209,6 +226,10 @@ class Vehicle {
     double? oilChangeInterval,
     double? lastOilChangeOdometer,
     DateTime? lastOilChangeDate,
+    // Use an Object? sentinel so callers can explicitly clear lastAccessedAt
+    // by passing null.  Ordinary copyWith fields cannot do this because
+    // `null ?? this.field` always falls back to `this.field`.
+    Object? lastAccessedAt = _kUnset,
   }) {
     return Vehicle(
       id: id, // always preserved
@@ -235,6 +256,13 @@ class Vehicle {
       lastOilChangeOdometer:
           lastOilChangeOdometer ?? this.lastOilChangeOdometer,
       lastOilChangeDate: lastOilChangeDate ?? this.lastOilChangeDate,
+      lastAccessedAt: identical(lastAccessedAt, _kUnset)
+          ? this.lastAccessedAt
+          : lastAccessedAt as DateTime?,
     );
   }
 }
+
+/// Sentinel value used by [Vehicle.copyWith] to distinguish between
+/// "caller did not pass lastAccessedAt" and "caller explicitly passed null".
+const Object _kUnset = Object();
