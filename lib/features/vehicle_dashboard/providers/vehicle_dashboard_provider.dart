@@ -4,6 +4,7 @@ import 'package:odomex/features/vehicle_dashboard/utils/daily_travel_calculator.
 import 'package:odomex/features/vehicle_dashboard/utils/period_usage_calculator.dart';
 import 'package:odomex/features/vehicle_dashboard/utils/vehicle_reminder_calculator.dart';
 import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
+import 'package:odomex/features/vehicle_settings/providers/vehicle_settings_provider.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 
 /// Manages the currently selected usage time range on the dashboard.
@@ -17,9 +18,10 @@ final dashboardRangeProvider = StateProvider.autoDispose
 /// Combines:
 ///   1. Vehicle state from [vehicleByIdProvider]
 ///   2. All vehicle records from [recordsByVehicleProvider]
-///   3. Active time range from [dashboardRangeProvider]
-///   4. Urgency-sorted reminders from [VehicleReminderCalculator]
-///   5. Period-based usage, distance, fuel, and cost summaries from [PeriodUsageCalculator]
+///   3. Effective vehicle settings from [effectiveVehicleSettingsProvider]
+///   4. Active time range from [dashboardRangeProvider]
+///   5. Urgency-sorted reminders from [VehicleReminderCalculator]
+///   6. Period-based usage, distance, fuel, and cost summaries from [PeriodUsageCalculator]
 final vehicleDashboardProvider =
     Provider.family<VehicleDashboardData?, String>((
   ref,
@@ -33,6 +35,9 @@ final vehicleDashboardProvider =
   final records = ref.watch(
     recordsByVehicleProvider(vehicleId),
   );
+  final effectiveSettings = ref.watch(
+    effectiveVehicleSettingsProvider(vehicleId),
+  );
   final selectedRange = ref.watch(
     dashboardRangeProvider(vehicleId),
   );
@@ -40,9 +45,11 @@ final vehicleDashboardProvider =
   // Up to 10 most recent records
   final recentRecords = records.take(10).toList();
 
-  // Prioritized reminders
+  // Prioritized reminders dynamically derived from vehicle records & effective settings
   final reminders = VehicleReminderCalculator.calculateReminders(
     vehicle,
+    settings: effectiveSettings,
+    records: records,
   );
 
   // Period usage, distance, fuel, and cost analytics

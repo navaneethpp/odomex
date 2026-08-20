@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:odomex/features/settings/screens/settings_screen.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
+import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
+import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
 
 void main() {
   setUpAll(() {
@@ -17,20 +21,28 @@ void main() {
   });
 
   group('SettingsScreen Tests', () {
-    testWidgets('renders About section and subtle DeveloperBadge without separate section',
+    testWidgets('renders About, DeveloperBadge, Appearance, Vehicle Defaults, and Vehicle List sections',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: SettingsScreen(),
+        const ProviderScope(
+          child: MaterialApp(
+            home: SettingsScreen(),
+          ),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('Settings'), findsOneWidget);
       expect(find.text('ABOUT'), findsOneWidget);
-      expect(find.text('DEVELOPER'), findsNothing); // No separate DEVELOPER header
+      expect(find.text('APPEARANCE'), findsOneWidget);
+      expect(find.text('VEHICLE DEFAULTS'), findsOneWidget);
+      expect(find.text('VEHICLE LIST'), findsOneWidget);
+      expect(find.text('DEVELOPER'), findsNothing);
       expect(find.byType(AboutAppCard), findsOneWidget);
       expect(find.byType(DeveloperBadge), findsOneWidget);
+      expect(find.byType(AppearanceSettingTile), findsOneWidget);
+      expect(find.byType(VehicleDefaultsSettingTile), findsOneWidget);
+      expect(find.byType(VehicleSortSettingTile), findsOneWidget);
     });
 
     testWidgets('AboutAppCard displays app name, tagline, description and version',

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/features/vehicle_preferences/widgets/vehicle_action_sheet.dart';
 import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/providers/vehicle_preferences_provider.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/HomeScreen/widgets/vehicle_card.dart';
@@ -11,8 +13,7 @@ import 'package:odomex/widgets/screen_container.dart';
 /// Home screen — displays all vehicles from the [vehicleProvider].
 ///
 /// Automatically rebuilds when the vehicle list changes (e.g. after a vehicle
-/// is added via [AddVehicleScreen]). No manual setState() or list refresh
-/// needed.
+/// is added, pinned, or updated).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -31,8 +32,6 @@ class HomeScreen extends ConsumerWidget {
   }
 
   void _addVehicle(BuildContext context) {
-    // No need to await a return value: Riverpod automatically notifies
-    // HomeScreen when a new vehicle is added in AddVehicleScreen.
     Navigator.pushNamed(context, AppRoutes.addVehicle);
   }
 
@@ -43,9 +42,39 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  void _showVehicleActions(
+    BuildContext context,
+    WidgetRef ref,
+    Vehicle vehicle,
+    bool isPinned,
+  ) {
+    showVehicleActionSheet(
+      context: context,
+      vehicle: vehicle,
+      isPinned: isPinned,
+      onTogglePin: () async {
+        final newPinned = await ref
+            .read(vehiclePreferencesProvider.notifier)
+            .togglePin(vehicle.id);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                newPinned ? 'Vehicle pinned' : 'Vehicle unpinned',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicles = ref.watch(vehicleProvider);
+    final preferences = ref.watch(vehiclePreferencesProvider);
 
     return ScreenContainer(
       title: 'Available Vehicles',
@@ -59,29 +88,27 @@ class HomeScreen extends ConsumerWidget {
           tooltip: 'Settings',
         ),
       ],
-
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addVehicle(context),
         child: const Icon(Icons.add),
       ),
-
       child: vehicles.isEmpty
           ? _buildEmptyState(context)
           : ListView.separated(
               itemCount: vehicles.length,
-
               separatorBuilder: (context, index) =>
                   const SizedBox(height: AppSizes.spacingMd),
-
               itemBuilder: (context, index) {
                 final vehicle = vehicles[index];
+                final isPinned = preferences[vehicle.id]?.isPinned ?? false;
 
                 return VehicleCard(
                   vehicle: vehicle,
-
+                  isPinned: isPinned,
                   onView: () => _viewVehicle(context, ref, vehicle),
-
                   onAdd: () => _addRecord(context, vehicle),
+                  onLongPress: () =>
+                      _showVehicleActions(context, ref, vehicle, isPinned),
                 );
               },
             ),

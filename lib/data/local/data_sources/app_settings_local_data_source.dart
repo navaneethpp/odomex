@@ -1,0 +1,105 @@
+import 'package:hive_ce/hive.dart';
+import 'package:odomex/core/theme/app_theme_mode.dart';
+import 'package:odomex/data/local/hive_boxes.dart';
+import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
+import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
+
+/// Abstract data source for app-level settings and preferences.
+abstract class AppSettingsLocalDataSource {
+  /// Reads the saved theme preference, defaulting to [AppThemeMode.system].
+  AppThemeMode getThemeMode();
+
+  /// Persists [mode] into local storage.
+  Future<void> saveThemeMode(AppThemeMode mode);
+
+  /// Reads global vehicle maintenance defaults.
+  GlobalVehicleSettings getGlobalVehicleSettings();
+
+  /// Persists [settings] as the global vehicle defaults.
+  Future<void> saveGlobalVehicleSettings(GlobalVehicleSettings settings);
+
+  /// Reads the saved vehicle list sorting preference.
+  VehicleSortOption getVehicleSortOption();
+
+  /// Persists [option] as the vehicle list sorting preference.
+  Future<void> saveVehicleSortOption(VehicleSortOption option);
+}
+
+/// Hive CE implementation of [AppSettingsLocalDataSource].
+class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
+  HiveAppSettingsLocalDataSource({
+    Box<dynamic>? settingsBox,
+  }) : _customBox = settingsBox;
+
+  final Box<dynamic>? _customBox;
+
+  Box<dynamic>? get _settingsBox =>
+      _customBox ??
+      (Hive.isBoxOpen(HiveBoxes.appSettings)
+          ? Hive.box<dynamic>(HiveBoxes.appSettings)
+          : null);
+
+  static const String _themeModeKey = 'theme_mode';
+  static const String _globalVehicleSettingsKey = 'global_vehicle_settings';
+  static const String _vehicleSortOptionKey = 'vehicle_sort_option';
+
+  @override
+  AppThemeMode getThemeMode() {
+    final box = _settingsBox;
+    if (box == null) return AppThemeMode.system;
+
+    final rawValue = box.get(_themeModeKey);
+    if (rawValue is String) {
+      return AppThemeModeExtension.fromStorageKey(rawValue);
+    }
+    return AppThemeMode.system;
+  }
+
+  @override
+  Future<void> saveThemeMode(AppThemeMode mode) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_themeModeKey, mode.storageKey);
+    }
+  }
+
+  @override
+  GlobalVehicleSettings getGlobalVehicleSettings() {
+    final box = _settingsBox;
+    if (box == null) return const GlobalVehicleSettings();
+
+    final raw = box.get(_globalVehicleSettingsKey);
+    if (raw is Map) {
+      return GlobalVehicleSettings.fromMap(raw);
+    }
+    return const GlobalVehicleSettings();
+  }
+
+  @override
+  Future<void> saveGlobalVehicleSettings(GlobalVehicleSettings settings) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_globalVehicleSettingsKey, settings.toMap());
+    }
+  }
+
+  @override
+  VehicleSortOption getVehicleSortOption() {
+    final box = _settingsBox;
+    if (box == null) return VehicleSortOption.lastAccessed;
+
+    final rawValue = box.get(_vehicleSortOptionKey);
+    if (rawValue is String) {
+      return VehicleSortOptionExtension.fromStorageKey(rawValue);
+    }
+    return VehicleSortOption.lastAccessed;
+  }
+
+  @override
+  Future<void> saveVehicleSortOption(VehicleSortOption option) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_vehicleSortOptionKey, option.storageKey);
+    }
+  }
+}

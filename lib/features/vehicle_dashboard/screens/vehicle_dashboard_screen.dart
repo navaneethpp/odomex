@@ -9,6 +9,7 @@ import 'package:odomex/features/vehicle_dashboard/widgets/reminder_section.dart'
 import 'package:odomex/features/vehicle_dashboard/widgets/usage_overview_section.dart';
 import 'package:odomex/features/vehicle_dashboard/widgets/vehicle_details_button.dart';
 import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
+import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
 /// Primary dashboard screen for an individual vehicle.
@@ -59,6 +60,19 @@ class VehicleDashboardScreen extends ConsumerWidget {
     return ScreenContainer(
       title: vehicle.model,
       showBackButton: true,
+      actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.vehicleSettings,
+              arguments: vehicleId,
+            );
+          },
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: 'Vehicle Settings',
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showAddVehicleRecordSheet(

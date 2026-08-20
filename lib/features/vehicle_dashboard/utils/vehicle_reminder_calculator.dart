@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_colors.dart';
 import 'package:odomex/core/utils/vehicle_status.dart';
+import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_settings/models/effective_vehicle_settings.dart';
 import 'package:odomex/models/vehicle.dart';
 
 /// Urgency level for sorting reminders.
@@ -89,11 +91,23 @@ class VehicleReminderCalculator {
   static final DateFormat _dateFormat = DateFormat('d MMMM yyyy');
 
   /// Calculates all reminders for [vehicle] and returns them sorted by urgency.
-  static List<VehicleReminder> calculateReminders(Vehicle vehicle) {
+  ///
+  /// Dynamically respects [settings] (effective merged settings) and derives maintenance targets from [records].
+  static List<VehicleReminder> calculateReminders(
+    Vehicle vehicle, {
+    EffectiveVehicleSettings? settings,
+    List<VehicleRecord>? records,
+  }) {
     final reminders = <VehicleReminder>[];
 
     // ── 1. Insurance ──
-    if (vehicle.hasInsurance && vehicle.insuranceEndDate != null) {
+    final insuranceEnabled = settings?.insuranceReminderEnabled ?? true;
+    final insuranceWarnDays =
+        settings?.insuranceReminderDays ?? kDocumentWarnDays;
+
+    if (insuranceEnabled &&
+        vehicle.hasInsurance &&
+        vehicle.insuranceEndDate != null) {
       final days = daysUntilExpiry(vehicle.insuranceEndDate!);
       final ReminderUrgency urgency;
       final String remainingText;
@@ -104,7 +118,7 @@ class VehicleReminderCalculator {
       } else if (days == 0) {
         urgency = ReminderUrgency.dueToday;
         remainingText = 'Expires today';
-      } else if (days <= kDocumentWarnDays) {
+      } else if (days <= insuranceWarnDays) {
         urgency = ReminderUrgency.dueSoon;
         remainingText = '$days days remaining';
       } else {
@@ -129,7 +143,10 @@ class VehicleReminderCalculator {
     }
 
     // ── 2. PUC (Pollution Certificate) ──
-    if (vehicle.hasPuc && vehicle.pucEndDate != null) {
+    final pucEnabled = settings?.pucReminderEnabled ?? true;
+    final pucWarnDays = settings?.pucReminderDays ?? kDocumentWarnDays;
+
+    if (pucEnabled && vehicle.hasPuc && vehicle.pucEndDate != null) {
       final days = daysUntilExpiry(vehicle.pucEndDate!);
       final ReminderUrgency urgency;
       final String remainingText;
@@ -140,7 +157,7 @@ class VehicleReminderCalculator {
       } else if (days == 0) {
         urgency = ReminderUrgency.dueToday;
         remainingText = 'Expires today';
-      } else if (days <= kDocumentWarnDays) {
+      } else if (days <= pucWarnDays) {
         urgency = ReminderUrgency.dueSoon;
         remainingText = '$days days remaining';
       } else {
@@ -164,9 +181,30 @@ class VehicleReminderCalculator {
       );
     }
 
+    final warnThresholdKm =
+        settings?.maintenanceReminderThresholdKm ?? kMaintenanceWarnKm;
+
     // ── 3. Oil Change ──
-    if (vehicle.nextOilChangeOdometer != null) {
-      final nextOdo = vehicle.nextOilChangeOdometer!;
+    final oilChangeEnabled = settings?.oilChangeReminderEnabled ?? true;
+    if (oilChangeEnabled) {
+      final interval = settings?.oilChangeIntervalKm ??
+          vehicle.oilChangeInterval?.toInt() ??
+          3000;
+
+      // Look for latest historical OilChangeRecord with an odometer reading
+      double? nextOdo;
+      if (records != null && records.isNotEmpty) {
+        final oilRecords = records.whereType<OilChangeRecord>().toList();
+        if (oilRecords.isNotEmpty) {
+          oilRecords.sort((a, b) => b.date.compareTo(a.date));
+          final lastOilOdo = oilRecords.first.odometerReading;
+          nextOdo = lastOilOdo + interval;
+        }
+      }
+
+      nextOdo ??=
+          vehicle.nextOilChangeOdometer ?? (vehicle.odometerReading + interval);
+
       final diff = nextOdo - vehicle.odometerReading;
       final ReminderUrgency urgency;
       final String remainingText;
@@ -177,7 +215,7 @@ class VehicleReminderCalculator {
       } else if (diff == 0) {
         urgency = ReminderUrgency.dueToday;
         remainingText = 'Due now';
-      } else if (diff <= kMaintenanceWarnKm) {
+      } else if (diff <= warnThresholdKm) {
         urgency = ReminderUrgency.dueSoon;
         remainingText = '${diff.toStringAsFixed(0)} km remaining';
       } else {
@@ -189,9 +227,7 @@ class VehicleReminderCalculator {
         VehicleReminder(
           type: ReminderType.oilChange,
           title: 'Oil Change',
-          subtitle: vehicle.oilChangeInterval != null
-              ? 'Every ${vehicle.oilChangeInterval!.toStringAsFixed(0)} km'
-              : 'Scheduled Oil Change',
+          subtitle: 'Every ${interval.toStringAsFixed(0)} km',
           dueText: 'Due at ${nextOdo.toStringAsFixed(0)} km',
           remainingText: remainingText,
           urgency: urgency,
@@ -200,9 +236,28 @@ class VehicleReminderCalculator {
       );
     }
 
-    // ── 4. Service ──
-    if (vehicle.nextServiceOdometer != null) {
-      final nextOdo = vehicle.nextServiceOdometer!;
+    // ── 4. Scheduled Service ──
+    final serviceEnabled = settings?.serviceReminderEnabled ?? true;
+    if (serviceEnabled) {
+      final interval = settings?.serviceIntervalKm ?? 3000;
+
+      // Look for latest historical ServiceRecord with an odometer reading
+      double? nextOdo;
+      if (records != null && records.isNotEmpty) {
+        final serviceRecords = records
+            .whereType<ServiceRecord>()
+            .where((r) => r.odometerReading != null)
+            .toList();
+        if (serviceRecords.isNotEmpty) {
+          serviceRecords.sort((a, b) => b.date.compareTo(a.date));
+          final lastServiceOdo = serviceRecords.first.odometerReading!;
+          nextOdo = lastServiceOdo + interval;
+        }
+      }
+
+      nextOdo ??=
+          vehicle.nextServiceOdometer ?? (vehicle.odometerReading + interval);
+
       final diff = nextOdo - vehicle.odometerReading;
       final ReminderUrgency urgency;
       final String remainingText;
@@ -213,7 +268,7 @@ class VehicleReminderCalculator {
       } else if (diff == 0) {
         urgency = ReminderUrgency.dueToday;
         remainingText = 'Due now';
-      } else if (diff <= kMaintenanceWarnKm) {
+      } else if (diff <= warnThresholdKm) {
         urgency = ReminderUrgency.dueSoon;
         remainingText = '${diff.toStringAsFixed(0)} km remaining';
       } else {
@@ -225,7 +280,7 @@ class VehicleReminderCalculator {
         VehicleReminder(
           type: ReminderType.service,
           title: 'Scheduled Service',
-          subtitle: 'General Maintenance',
+          subtitle: 'Every ${interval.toStringAsFixed(0)} km',
           dueText: 'Due at ${nextOdo.toStringAsFixed(0)} km',
           remainingText: remainingText,
           urgency: urgency,

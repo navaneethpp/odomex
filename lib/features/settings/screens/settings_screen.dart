@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
+import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
 import 'package:odomex/features/settings/widgets/settings_section_title.dart';
+import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
 /// Application settings and information screen.
@@ -29,6 +32,24 @@ class SettingsScreen extends StatelessWidget {
             Center(
               child: DeveloperBadge(),
             ),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 3. Appearance Preference ───────────────
+            SettingsSectionTitle(title: 'APPEARANCE'),
+            AppearanceSettingTile(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 4. Vehicle Defaults ───────────────────
+            SettingsSectionTitle(title: 'VEHICLE DEFAULTS'),
+            VehicleDefaultsSettingTile(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 5. Vehicle List Preferences ───────────
+            SettingsSectionTitle(title: 'VEHICLE LIST'),
+            VehicleSortSettingTile(),
           ],
         ),
       ),

@@ -4,65 +4,92 @@ import 'package:odomex/models/vehicle.dart';
 
 class VehicleCard extends StatelessWidget {
   final Vehicle vehicle;
+  final bool isPinned;
   final VoidCallback? onView;
   final VoidCallback? onAdd;
+  final VoidCallback? onLongPress;
 
   const VehicleCard({
     super.key,
     required this.vehicle,
+    this.isPinned = false,
     this.onView,
     this.onAdd,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return Card(
-      elevation: AppSizes.elevationSm,
-      child: InkWell(
-        onTap: onView,
-        borderRadius: BorderRadius.circular(
-          AppSizes.radiusLg,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.paddingLg),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vehicle.model,
-                      style: theme.textTheme.titleMedium,
-                    ),
-
-                    const SizedBox(
-                      height: AppSizes.spacingSm,
-                    ),
-
-                    Text(
-                      '${vehicle.odometerReading} km',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+    return Semantics(
+      label:
+          '${vehicle.brand.displayName} ${vehicle.model}, ${vehicle.odometerReading.toStringAsFixed(0)} km. ${isPinned ? "Pinned. " : ""}Long press for vehicle actions.',
+      button: true,
+      child: Card(
+        elevation: AppSizes.elevationSm,
+        child: InkWell(
+          onTap: onView,
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(
+            AppSizes.radiusLg,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.paddingLg),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (isPinned) ...[
+                            Icon(
+                              Icons.push_pin_rounded,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppSizes.spacingXs),
+                          ],
+                          Flexible(
+                            child: Text(
+                              vehicle.model,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: isPinned
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: AppSizes.spacingSm,
+                      ),
+                      Text(
+                        '${vehicle.odometerReading.toStringAsFixed(0)} km',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              IconButton(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add),
-                tooltip: 'Add',
-              ),
-
-              IconButton(
-                onPressed: onView,
-                icon: const Icon(Icons.visibility_outlined),
-                tooltip: 'View',
-              ),
-            ],
+                IconButton(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Add record',
+                ),
+                IconButton(
+                  onPressed: onView,
+                  icon: const Icon(Icons.visibility_outlined),
+                  tooltip: 'View vehicle',
+                ),
+              ],
+            ),
           ),
         ),
       ),
