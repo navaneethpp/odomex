@@ -23,8 +23,8 @@ class HomeScreen extends ConsumerWidget {
 
     Navigator.pushNamed(
       context,
-      AppRoutes.vehicleDetails,
-      // Pass only the ID — VehicleDetailsScreen fetches up-to-date state
+      AppRoutes.vehicleDashboard,
+      // Pass only the ID — VehicleDashboardScreen fetches up-to-date state
       // from Riverpod rather than working from a potentially stale object.
       arguments: vehicle.id,
     );
@@ -50,6 +50,15 @@ class HomeScreen extends ConsumerWidget {
     return ScreenContainer(
       title: 'Available Vehicles',
       showBackButton: false,
+      actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.pushNamed(context, AppRoutes.settings);
+          },
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: 'Settings',
+        ),
+      ],
 
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addVehicle(context),

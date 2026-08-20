@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
+import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/data/local/hive_registrar.dart';
+import 'package:odomex/data/sample_vehicle_records.dart';
 import 'package:odomex/data/vehicles.dart';
+import 'package:odomex/features/settings/screens/settings_screen.dart';
+import 'package:odomex/features/vehicle_dashboard/screens/vehicle_dashboard_screen.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_records/screens/vehicle_records_screen.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/add_vehicle_screen.dart';
@@ -24,7 +29,7 @@ Future<void> main() async {
 
   // 3. Open persistent boxes
   final vehicleBox = await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
-  await Hive.openBox<VehicleRecord>(HiveBoxes.vehicleRecords);
+  final recordBox = await Hive.openBox<VehicleRecord>(HiveBoxes.vehicleRecords);
   final settingsBox = await Hive.openBox<dynamic>(HiveBoxes.appSettings);
 
   // 4. Seed initial mock vehicles once if first launch
@@ -33,6 +38,13 @@ Future<void> main() async {
     settingsBox: settingsBox,
   );
   await vehicleDataSource.seedInitialVehicles(Vehicles.vehicles);
+
+  // 5. Seed initial mock historical records once if first launch
+  final recordDataSource = HiveVehicleRecordLocalDataSource(
+    recordBox: recordBox,
+    settingsBox: settingsBox,
+  );
+  await recordDataSource.seedInitialRecords(SampleVehicleRecords.records);
 
   runApp(
     const ProviderScope(
@@ -60,16 +72,29 @@ class MainApp extends StatelessWidget {
       routes: {
         AppRoutes.home: (context) => const HomeScreen(),
 
-        // Vehicle Details receives a vehicleId (String) — not a Vehicle object.
-        // The screen looks up the current vehicle from Riverpod so it always
-        // reflects up-to-date state.
+        // Primary individual vehicle screen (Daily dashboard)
+        AppRoutes.vehicleDashboard: (context) {
+          final vehicleId =
+              ModalRoute.of(context)!.settings.arguments as String;
+          return VehicleDashboardScreen(vehicleId: vehicleId);
+        },
+
+        // Deep vehicle specifications & compliance
         AppRoutes.vehicleDetails: (context) {
           final vehicleId =
               ModalRoute.of(context)!.settings.arguments as String;
           return VehicleDetailsScreen(vehicleId: vehicleId);
         },
 
+        // Full vehicle records history
+        AppRoutes.vehicleRecords: (context) {
+          final vehicleId =
+              ModalRoute.of(context)!.settings.arguments as String;
+          return VehicleRecordsScreen(vehicleId: vehicleId);
+        },
+
         AppRoutes.addVehicle: (context) => const AddVehicleScreen(),
+        AppRoutes.settings: (context) => const SettingsScreen(),
       },
     );
   }

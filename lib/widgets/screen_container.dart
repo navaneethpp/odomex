@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/theme/app_sizes.dart';
 
 class ScreenContainer extends StatelessWidget {
   final String title;
   final Widget child;
   final bool showBackButton;
   final Widget? floatingActionButton;
+  final List<Widget>? actions;
 
   const ScreenContainer({
     super.key,
@@ -12,6 +14,7 @@ class ScreenContainer extends StatelessWidget {
     required this.child,
     this.showBackButton = true,
     this.floatingActionButton,
+    this.actions,
   });
 
   @override
@@ -22,6 +25,7 @@ class ScreenContainer extends StatelessWidget {
           title,
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        actions: actions,
         leading: showBackButton
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new),
@@ -35,8 +39,8 @@ class ScreenContainer extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+          horizontal: AppSizes.paddingLg,
+          vertical: AppSizes.paddingLg,
         ),
         child: child,
       ),

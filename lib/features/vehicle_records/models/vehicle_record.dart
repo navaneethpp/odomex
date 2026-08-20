@@ -1,17 +1,17 @@
-/// Sealed base class for all vehicle records.
+/// Sealed base class for all vehicle historical activity records.
 ///
 /// Using a sealed class allows exhaustive pattern matching on record types
 /// throughout the application. Adding a new record type is a compile-time
 /// checked operation — the analyser will flag any switch that does not handle
 /// the new subtype.
 ///
-/// All subclasses are defined in this file to keep the sealed hierarchy in one
-/// place.
+/// All subclasses are defined in this file to keep the sealed hierarchy unified.
 sealed class VehicleRecord {
   const VehicleRecord({
     required this.id,
     required this.vehicleId,
     required this.date,
+    this.createdAt,
   });
 
   /// Unique record identifier.
@@ -20,18 +20,22 @@ sealed class VehicleRecord {
   /// The vehicle this record belongs to.
   final String vehicleId;
 
-  /// The date the real-world event occurred (not necessarily when the record
-  /// was created in the app).
+  /// The date the real-world activity occurred.
   final DateTime date;
 
-  /// Generates a simple unique ID. When persistent storage is introduced,
-  /// the database should supply stable IDs instead.
+  /// When this record was entered into the application.
+  final DateTime? createdAt;
+
+  /// Alias for [date], indicating when the physical event occurred.
+  DateTime get recordedAt => date;
+
+  /// Generates a unique, stable ID for new records.
   static String generateId(String prefix) =>
       '${prefix}_${DateTime.now().microsecondsSinceEpoch}';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ODOMETER
+// ODOMETER RECORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// A single odometer reading logged for a vehicle.
@@ -40,21 +44,24 @@ class OdometerRecord extends VehicleRecord {
     required super.id,
     required super.vehicleId,
     required super.date,
+    super.createdAt,
     required this.odometer,
     this.notes,
   });
 
-  /// Factory that auto-generates a record ID.
+  /// Factory that auto-generates a record ID and sets creation timestamp.
   factory OdometerRecord.create({
     required String vehicleId,
     required DateTime date,
     required double odometer,
     String? notes,
+    DateTime? createdAt,
   }) =>
       OdometerRecord(
         id: VehicleRecord.generateId('odo'),
         vehicleId: vehicleId,
         date: date,
+        createdAt: createdAt ?? DateTime.now(),
         odometer: odometer,
         notes: notes,
       );
@@ -62,12 +69,15 @@ class OdometerRecord extends VehicleRecord {
   /// Odometer reading in kilometres.
   final double odometer;
 
+  /// Alias for [odometer] reading in km.
+  double get odometerReading => odometer;
+
   /// Optional free-form notes.
   final String? notes;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FUEL REFILL
+// FUEL REFILL RECORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// A fuel refill event for a vehicle.
@@ -76,6 +86,7 @@ class FuelRecord extends VehicleRecord {
     required super.id,
     required super.vehicleId,
     required super.date,
+    super.createdAt,
     required this.quantity,
     required this.cost,
     this.odometerReading,
@@ -91,11 +102,13 @@ class FuelRecord extends VehicleRecord {
     double? odometerReading,
     String? station,
     String? notes,
+    DateTime? createdAt,
   }) =>
       FuelRecord(
         id: VehicleRecord.generateId('fuel'),
         vehicleId: vehicleId,
         date: date,
+        createdAt: createdAt ?? DateTime.now(),
         quantity: quantity,
         cost: cost,
         odometerReading: odometerReading,
@@ -106,24 +119,36 @@ class FuelRecord extends VehicleRecord {
   /// Fuel quantity added, in litres.
   final double quantity;
 
+  /// Alias for [quantity] in litres.
+  double get fuelQuantity => quantity;
+
   /// Total cost of the refill, in INR.
   final double cost;
 
-  /// Odometer reading at the time of refill (km). Optional.
+  /// Alias for [cost] in INR.
+  double get fuelCost => cost;
+
+  /// Odometer reading at the time of refill (km).
   final double? odometerReading;
 
-  /// Name of the fuel station. Optional.
+  /// Name of the fuel station.
   final String? station;
+
+  /// Alias for [station].
+  String? get fuelStation => station;
 
   /// Optional notes.
   final String? notes;
 
   /// Cost per litre, computed from [cost] and [quantity].
   double get costPerLitre => quantity > 0 ? cost / quantity : 0;
+
+  /// Alias for [costPerLitre].
+  double get fuelPricePerUnit => costPerLitre;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SERVICE
+// SERVICE RECORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Predefined service categories.
@@ -161,10 +186,12 @@ class ServiceRecord extends VehicleRecord {
     required super.id,
     required super.vehicleId,
     required super.date,
+    super.createdAt,
     required this.serviceType,
     required this.description,
     this.odometerReading,
     this.cost,
+    this.notes,
   });
 
   factory ServiceRecord.create({
@@ -174,33 +201,39 @@ class ServiceRecord extends VehicleRecord {
     required String description,
     double? odometerReading,
     double? cost,
+    String? notes,
+    DateTime? createdAt,
   }) =>
       ServiceRecord(
         id: VehicleRecord.generateId('svc'),
         vehicleId: vehicleId,
         date: date,
+        createdAt: createdAt ?? DateTime.now(),
         serviceType: serviceType,
         description: description,
         odometerReading: odometerReading,
         cost: cost,
+        notes: notes,
       );
 
   /// Category of service performed.
   final ServiceType serviceType;
 
-  /// Description of the service, especially relevant when [serviceType] is
-  /// [ServiceType.other].
+  /// Description of the service.
   final String description;
 
-  /// Odometer reading at the time of service (km). Optional.
+  /// Odometer reading at the time of service (km).
   final double? odometerReading;
 
-  /// Total service cost, in INR. Optional.
+  /// Total service cost, in INR.
   final double? cost;
+
+  /// Optional notes.
+  final String? notes;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OIL CHANGE
+// OIL CHANGE RECORD
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// An oil change event for a vehicle.
@@ -209,6 +242,7 @@ class OilChangeRecord extends VehicleRecord {
     required super.id,
     required super.vehicleId,
     required super.date,
+    super.createdAt,
     required this.odometerReading,
     this.oilType,
     this.quantity,
@@ -224,11 +258,13 @@ class OilChangeRecord extends VehicleRecord {
     double? quantity,
     double? cost,
     String? notes,
+    DateTime? createdAt,
   }) =>
       OilChangeRecord(
         id: VehicleRecord.generateId('oil'),
         vehicleId: vehicleId,
         date: date,
+        createdAt: createdAt ?? DateTime.now(),
         odometerReading: odometerReading,
         oilType: oilType,
         quantity: quantity,
@@ -239,13 +275,16 @@ class OilChangeRecord extends VehicleRecord {
   /// Odometer reading at which the oil was changed (km).
   final double odometerReading;
 
-  /// Oil specification, e.g. '10W-40'. Optional.
+  /// Oil specification, e.g. '10W-40'.
   final String? oilType;
 
-  /// Oil quantity used, in litres. Optional.
+  /// Oil quantity used, in litres.
   final double? quantity;
 
-  /// Total cost, in INR. Optional.
+  /// Alias for [quantity].
+  double? get oilQuantity => quantity;
+
+  /// Total cost, in INR.
   final double? cost;
 
   /// Optional notes.

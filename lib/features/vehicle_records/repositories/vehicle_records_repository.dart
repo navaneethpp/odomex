@@ -18,6 +18,22 @@ class VehicleRecordsRepository {
     return localDataSource.addRecord(record);
   }
 
+  /// Returns all records for [vehicleId] sorted by date descending.
+  List<VehicleRecord> getAllRecords(String vehicleId) =>
+      localDataSource.getAllRecords(vehicleId);
+
+  /// Returns up to [limit] most recent records for [vehicleId].
+  List<VehicleRecord> getRecentRecords(String vehicleId, {int limit = 10}) =>
+      localDataSource.getRecentRecords(vehicleId, limit: limit);
+
+  /// Returns records within [startDate] and [endDate] for [vehicleId].
+  List<VehicleRecord> getRecordsByDateRange(
+    String vehicleId,
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      localDataSource.getRecordsByDateRange(vehicleId, startDate, endDate);
+
   /// Returns all odometer records for [vehicleId].
   List<OdometerRecord> getOdometerRecords(String vehicleId) =>
       localDataSource.getOdometerRecords(vehicleId);
@@ -33,10 +49,6 @@ class VehicleRecordsRepository {
   /// Returns all oil change records for [vehicleId].
   List<OilChangeRecord> getOilChangeRecords(String vehicleId) =>
       localDataSource.getOilChangeRecords(vehicleId);
-
-  /// Returns all records for [vehicleId] sorted by date descending.
-  List<VehicleRecord> getAllRecords(String vehicleId) =>
-      localDataSource.getAllRecords(vehicleId);
 
   /// Returns the most recent [OdometerRecord] for [vehicleId], or null.
   OdometerRecord? getLatestOdometerRecord(String vehicleId) {

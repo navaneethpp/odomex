@@ -7,6 +7,16 @@ abstract class VehicleRecordLocalDataSource {
   /// Returns all records for [vehicleId], sorted by date descending.
   List<VehicleRecord> getAllRecords(String vehicleId);
 
+  /// Returns up to [limit] recent records for [vehicleId], sorted by date descending.
+  List<VehicleRecord> getRecentRecords(String vehicleId, {int limit = 10});
+
+  /// Returns records within [startDate] and [endDate] for [vehicleId].
+  List<VehicleRecord> getRecordsByDateRange(
+    String vehicleId,
+    DateTime startDate,
+    DateTime endDate,
+  );
+
   /// Returns all odometer records for [vehicleId].
   List<OdometerRecord> getOdometerRecords(String vehicleId);
 
@@ -24,6 +34,9 @@ abstract class VehicleRecordLocalDataSource {
 
   /// Deletes all records belonging to [vehicleId] (cascading delete).
   Future<void> deleteRecordsForVehicle(String vehicleId);
+
+  /// Seeds initial mock records on first launch only.
+  Future<void> seedInitialRecords(List<VehicleRecord> records);
 }
 
 /// Hive CE implementation of [VehicleRecordLocalDataSource].
@@ -32,14 +45,45 @@ abstract class VehicleRecordLocalDataSource {
 class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
   HiveVehicleRecordLocalDataSource({
     Box<VehicleRecord>? recordBox,
-  }) : _recordBox = recordBox ?? Hive.box<VehicleRecord>(HiveBoxes.vehicleRecords);
+    Box<dynamic>? settingsBox,
+  })  : _recordBox =
+            recordBox ?? Hive.box<VehicleRecord>(HiveBoxes.vehicleRecords),
+        _settingsBox = settingsBox ?? Hive.box<dynamic>(HiveBoxes.appSettings);
 
   final Box<VehicleRecord> _recordBox;
+  final Box<dynamic> _settingsBox;
+
+  static const String _isRecordsSeededKey = 'is_records_seeded';
 
   @override
   List<VehicleRecord> getAllRecords(String vehicleId) {
     final records = _recordBox.values
         .where((r) => r.vehicleId == vehicleId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return records;
+  }
+
+  @override
+  List<VehicleRecord> getRecentRecords(String vehicleId, {int limit = 10}) {
+    final records = getAllRecords(vehicleId);
+    return records.take(limit).toList();
+  }
+
+  @override
+  List<VehicleRecord> getRecordsByDateRange(
+    String vehicleId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+    final records = _recordBox.values
+        .where((r) =>
+            r.vehicleId == vehicleId &&
+            !r.date.isBefore(start) &&
+            !r.date.isAfter(end))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     return records;
@@ -94,5 +138,15 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .toList();
 
     await _recordBox.deleteAll(keysToDelete);
+  }
+
+  @override
+  Future<void> seedInitialRecords(List<VehicleRecord> records) async {
+    final isSeeded = _settingsBox.get(_isRecordsSeededKey, defaultValue: false);
+    if (isSeeded == true) return;
+
+    final map = {for (final r in records) r.id: r};
+    await _recordBox.putAll(map);
+    await _settingsBox.put(_isRecordsSeededKey, true);
   }
 }
