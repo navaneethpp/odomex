@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:odomex/core/notifications/notification_constants.dart';
+import 'package:odomex/features/settings/models/notification_permission_state.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -10,7 +12,7 @@ typedef NotificationTapCallback = void Function(String? payload);
 /// A centralized, reusable service for managing local notifications and scheduling.
 ///
 /// Encapsulates package-specific configuration, permission requests,
-/// channel initialization, and notification dispatching/scheduling.
+/// channel initialization, and timezone-aware notification dispatching/scheduling.
 class NotificationService {
   NotificationService._({FlutterLocalNotificationsPlugin? plugin})
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -26,6 +28,7 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _isInitialized = false;
+  String _localTimeZoneName = 'UTC';
 
   /// Optional listener for notification tap events.
   NotificationTapCallback? onNotificationTapped;
@@ -33,14 +36,18 @@ class NotificationService {
   /// Whether the notification plugin has been successfully initialized.
   bool get isInitialized => _isInitialized;
 
-  /// Initializes the local notification plugin, timezones, and default Android channel.
+  /// The active local timezone name.
+  String get localTimeZoneName => _localTimeZoneName;
+
+  /// Initializes the local notification plugin, device timezone, and default Android channel.
   ///
   /// Safe to call during app startup; permissions are not requested here.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
-      tz.initializeTimeZones();
+      // 1. Configure device local timezone
+      await _configureLocalTimeZone();
 
       const androidSettings = AndroidInitializationSettings(
         NotificationConstants.androidNotificationIcon,
@@ -63,18 +70,35 @@ class NotificationService {
         onDidReceiveNotificationResponse: _onNotificationResponse,
       );
 
-      // Setup default Android notification channel
+      // 2. Setup default Android notification channel
       await _createNotificationChannel();
 
       _isInitialized = true;
+      debugPrint('[Notifications] Initialized: YES (Timezone: $_localTimeZoneName)');
     } catch (e, st) {
-      debugPrint('NotificationService: Failed to initialize ($e)\n$st');
+      debugPrint('[Notifications] Failed to initialize: $e\n$st');
+    }
+  }
+
+  /// Configures timezone data and sets the device local location.
+  Future<void> _configureLocalTimeZone() async {
+    try {
+      tz.initializeTimeZones();
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = timezoneInfo.identifier;
+      _localTimeZoneName = timeZoneName;
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint('[Notifications] FlutterTimezone error ($e). Using fallback.');
+      try {
+        _localTimeZoneName = DateTime.now().timeZoneName;
+      } catch (_) {}
     }
   }
 
   void _onNotificationResponse(NotificationResponse response) {
     debugPrint(
-        'NotificationService: Notification tapped (payload: ${response.payload})');
+        '[Notifications] Notification tapped (payload: ${response.payload})');
     onNotificationTapped?.call(response.payload);
   }
 
@@ -97,12 +121,13 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint(
-          'NotificationService: Failed to create notification channel: $e');
+          '[Notifications] Failed to create notification channel: $e');
     }
   }
 
   /// Requests runtime notification permission from the operating system (Android 13+ and iOS).
   ///
+  /// Requests notification permission ONLY without triggering exact alarm system intent.
   /// Returns `true` if permission is granted, `false` otherwise.
   Future<bool> requestPermission() async {
     try {
@@ -110,8 +135,10 @@ class NotificationService {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
-        final granted = await androidPlugin.requestNotificationsPermission();
-        return granted ?? false;
+        final notifGranted = await androidPlugin.requestNotificationsPermission();
+        final isGranted = notifGranted ?? false;
+        debugPrint('[Notifications] OS permission request result: ${isGranted ? "GRANTED" : "DENIED"}');
+        return isGranted;
       }
 
       // 2. iOS permission
@@ -140,9 +167,18 @@ class NotificationService {
 
       return true;
     } catch (e, st) {
-      debugPrint('NotificationService: Error requesting permission ($e)\n$st');
+      debugPrint('[Notifications] Error requesting permission ($e)\n$st');
       return false;
     }
+  }
+
+  /// Checks the current OS-level notification permission and alarm capability.
+  Future<NotificationPermissionState> checkPermissions() async {
+    final notificationGranted = await areNotificationsEnabled();
+    return NotificationPermissionState(
+      notificationGranted: notificationGranted,
+      exactAlarmGranted: true,
+    );
   }
 
   /// Checks whether notifications are enabled at the platform/OS level.
@@ -164,7 +200,7 @@ class NotificationService {
 
       return true;
     } catch (e) {
-      debugPrint('NotificationService: Error checking permission status: $e');
+      debugPrint('[Notifications] Error checking permission status: $e');
       return false;
     }
   }
@@ -182,7 +218,7 @@ class NotificationService {
     Importance importance = Importance.high,
     Priority priority = Priority.high,
   }) async {
-    if (!_isInitialized) return;
+    if (!_isInitialized) await initialize();
 
     try {
       final androidDetails = AndroidNotificationDetails(
@@ -213,8 +249,69 @@ class NotificationService {
         notificationDetails: details,
         payload: payload,
       );
+      debugPrint('[Notifications] Immediate notification shown: id=$id, title="$title"');
     } catch (e, st) {
-      debugPrint('NotificationService: Failed to show notification ($e)\n$st');
+      debugPrint('[Notifications] Failed to show notification ($e)\n$st');
+    }
+  }
+
+  /// Schedules a one-time notification at a specific [scheduledDate].
+  Future<void> scheduleNotificationAt({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    String? payload,
+    String channelId = NotificationConstants.remindersChannelId,
+    String channelName = NotificationConstants.remindersChannelName,
+    String channelDescription =
+        NotificationConstants.remindersChannelDescription,
+    Importance importance = Importance.high,
+    Priority priority = Priority.high,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: importance,
+        priority: priority,
+        icon: NotificationConstants.androidNotificationIcon,
+      );
+
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
+      const scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
+
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: scheduleMode,
+        payload: payload,
+      );
+
+      debugPrint('[Notifications] Scheduled notification at specific time:');
+      debugPrint('[Notifications] Notification ID: $id');
+      debugPrint('[Notifications] Next scheduled time: $scheduledDate');
+      debugPrint('[Notifications] Schedule mode: $scheduleMode');
+      debugPrint('[Notifications] Scheduling result: SUCCESS');
+    } catch (e, st) {
+      debugPrint('[Notifications] Failed to schedule notification ($e)\n$st');
     }
   }
 
@@ -233,7 +330,7 @@ class NotificationService {
     Importance importance = Importance.high,
     Priority priority = Priority.high,
   }) async {
-    if (!_isInitialized) return;
+    if (!_isInitialized) await initialize();
 
     try {
       final androidDetails = AndroidNotificationDetails(
@@ -258,6 +355,7 @@ class NotificationService {
       );
 
       final scheduledDate = _nextInstanceOfTime(hour, minute);
+      const scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
 
       await _plugin.zonedSchedule(
         id: id,
@@ -265,13 +363,21 @@ class NotificationService {
         body: body,
         scheduledDate: scheduledDate,
         notificationDetails: details,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: payload,
       );
+
+      debugPrint('[Notifications] Daily Activity notification scheduled:');
+      debugPrint('[Notifications] Configured time: ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}');
+      debugPrint('[Notifications] Current time: ${tz.TZDateTime.now(tz.local)}');
+      debugPrint('[Notifications] Next scheduled time: $scheduledDate');
+      debugPrint('[Notifications] Notification ID: $id');
+      debugPrint('[Notifications] Schedule mode: $scheduleMode');
+      debugPrint('[Notifications] Scheduling result: SUCCESS');
     } catch (e, st) {
       debugPrint(
-          'NotificationService: Failed to schedule daily notification ($e)\n$st');
+          '[Notifications] Failed to schedule daily notification ($e)\n$st');
     }
   }
 
@@ -286,7 +392,7 @@ class NotificationService {
       hour,
       minute,
     );
-    if (scheduledDate.isBefore(now)) {
+    if (scheduledDate.isBefore(now) || scheduledDate.isAtSameMomentAs(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     return scheduledDate;
@@ -301,25 +407,63 @@ class NotificationService {
     required int hour,
     required int minute,
   }) async {
-    if (!_isInitialized) return;
+    if (!_isInitialized) await initialize();
+
+    // Guard against corrupt/invalid values
+    final safeHour = (hour >= 0 && hour <= 23) ? hour : 20;
+    final safeMinute = (minute >= 0 && minute <= 59) ? minute : 0;
+
+    debugPrint('[Notifications] syncDailyActivitySchedule: masterEnabled=$masterEnabled, dailyActivityEnabled=$dailyActivityEnabled, time=${safeHour.toString().padLeft(2, '0')}:${safeMinute.toString().padLeft(2, '0')}');
 
     if (masterEnabled && dailyActivityEnabled) {
       final hasPermission = await areNotificationsEnabled();
+      debugPrint('[Notifications] OS permission status: ${hasPermission ? "GRANTED" : "DENIED"}');
       if (hasPermission) {
+        debugPrint('[Notifications] Cancelling previous Daily Activity notification before rescheduling');
         await cancel(NotificationConstants.dailyActivityNotificationId);
         await scheduleDailyNotification(
           id: NotificationConstants.dailyActivityNotificationId,
           title: NotificationConstants.dailyActivityTitle,
           body: NotificationConstants.dailyActivityBody,
-          hour: hour,
-          minute: minute,
+          hour: safeHour,
+          minute: safeMinute,
           payload: NotificationConstants.payloadTypeDailyActivity,
         );
         return;
       }
     }
 
+    debugPrint('[Notifications] Daily Activity disabled or permission denied. Cancelling schedule.');
     await cancel(NotificationConstants.dailyActivityNotificationId);
+  }
+
+  /// Development helper to schedule a test reminder [minutesFromNow] in the future.
+  ///
+  /// Uses the real OS scheduling mechanism without waiting for the daily clock time.
+  Future<bool> scheduleDevTestReminder({int minutesFromNow = 2}) async {
+    if (!_isInitialized) await initialize();
+
+    final hasPermission = await areNotificationsEnabled();
+    if (!hasPermission) {
+      debugPrint('[Notifications] Dev test reminder failed: OS permission denied');
+      return false;
+    }
+
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduledDate = now.add(Duration(minutes: minutesFromNow));
+
+    debugPrint('[Notifications] Scheduling DEV test reminder for $scheduledDate');
+
+    await cancel(NotificationConstants.dailyActivityNotificationId);
+    await scheduleNotificationAt(
+      id: NotificationConstants.dailyActivityNotificationId,
+      title: NotificationConstants.dailyActivityTitle,
+      body: NotificationConstants.dailyActivityBody,
+      scheduledDate: scheduledDate,
+      payload: NotificationConstants.payloadTypeDailyActivity,
+    );
+
+    return true;
   }
 
   /// Displays the predefined Odomex Test Notification.
@@ -338,8 +482,9 @@ class NotificationService {
 
     try {
       await _plugin.cancel(id: id);
+      debugPrint('[Notifications] Cancelled notification: id=$id');
     } catch (e) {
-      debugPrint('NotificationService: Failed to cancel notification $id: $e');
+      debugPrint('[Notifications] Failed to cancel notification $id: $e');
     }
   }
 
@@ -349,8 +494,9 @@ class NotificationService {
 
     try {
       await _plugin.cancelAll();
+      debugPrint('[Notifications] Cancelled all notifications');
     } catch (e) {
-      debugPrint('NotificationService: Failed to cancel all notifications: $e');
+      debugPrint('[Notifications] Failed to cancel all notifications: $e');
     }
   }
 }

@@ -5,6 +5,7 @@ import 'package:odomex/core/notifications/notification_constants.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
+import 'package:odomex/features/settings/models/notification_permission_state.dart';
 import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
 import 'package:odomex/features/settings/widgets/notification_preference_tile.dart';
@@ -144,6 +145,34 @@ class FakeNotificationService implements NotificationService {
     }
     await cancel(NotificationConstants.dailyActivityNotificationId);
   }
+
+  @override
+  Future<NotificationPermissionState> checkPermissions() async {
+    return NotificationPermissionState(
+      notificationGranted: mockPlatformEnabled,
+      exactAlarmGranted: true,
+    );
+  }
+
+  @override
+  String get localTimeZoneName => 'UTC';
+
+  @override
+  Future<void> scheduleNotificationAt({
+    required int id,
+    required String title,
+    required String body,
+    required dynamic scheduledDate,
+    String? payload,
+    dynamic channelId,
+    dynamic channelName,
+    dynamic channelDescription,
+    dynamic importance,
+    dynamic priority,
+  }) async {}
+
+  @override
+  Future<bool> scheduleDevTestReminder({int minutesFromNow = 2}) async => true;
 
   @override
   Future<void> showTestNotification() async {
@@ -364,6 +393,90 @@ void main() {
 
       expect(find.byType(TimePickerDialog), findsNothing);
       expect(find.text('8:00 PM'), findsOneWidget);
+    });
+
+    test('rescheduling cancels old notification and creates new one with updated time', () async {
+      final fakeDataSource = FakeAppSettingsLocalDataSource();
+      final repository = AppSettingsRepository(localDataSource: fakeDataSource);
+      final fakeService = FakeNotificationService();
+
+      final notifier = NotificationSettingsNotifier(
+        repository: repository,
+        notificationService: fakeService,
+      );
+
+      // Enable master and daily activity
+      await notifier.setMasterEnabled(true);
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, true);
+
+      expect(fakeService.scheduleDailyCallCount, 2);
+      expect(fakeService.lastScheduledHour, 20);
+      expect(fakeService.lastScheduledMinute, 0);
+
+      // Change time to 9:30 PM (21:30)
+      await notifier.setDailyActivityTime(const TimeOfDay(hour: 21, minute: 30));
+
+      expect(fakeService.lastScheduledHour, 21);
+      expect(fakeService.lastScheduledMinute, 30);
+      expect(fakeService.cancelCallCount >= 3, true);
+
+      // Disabling daily activity cancels schedule
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, false);
+      expect(notifier.state.dailyActivity, false);
+      expect(fakeService.cancelCallCount >= 4, true);
+
+      // Re-enabling restores with previously saved time (21:30)
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, true);
+      expect(notifier.state.dailyActivity, true);
+      expect(fakeService.lastScheduledHour, 21);
+      expect(fakeService.lastScheduledMinute, 30);
+    });
+
+    test('permission denied prevents false activation and does not schedule notifications', () async {
+      final fakeDataSource = FakeAppSettingsLocalDataSource();
+      final repository = AppSettingsRepository(localDataSource: fakeDataSource);
+      final fakeService = FakeNotificationService();
+
+      fakeService.mockPermissionGranted = false;
+      fakeService.mockPlatformEnabled = false;
+
+      final notifier = NotificationSettingsNotifier(
+        repository: repository,
+        notificationService: fakeService,
+      );
+
+      final result = await notifier.setMasterEnabled(true);
+      expect(result, false);
+      expect(notifier.state.enabled, false);
+      expect(fakeService.scheduleDailyCallCount, 0);
+    });
+
+    test('revoking OS permission cancels active schedules during refresh', () async {
+      final fakeDataSource = FakeAppSettingsLocalDataSource();
+      final repository = AppSettingsRepository(localDataSource: fakeDataSource);
+      final fakeService = FakeNotificationService();
+
+      fakeService.mockPermissionGranted = true;
+      fakeService.mockPlatformEnabled = true;
+
+      final notifier = NotificationSettingsNotifier(
+        repository: repository,
+        notificationService: fakeService,
+      );
+
+      await notifier.setMasterEnabled(true);
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, true);
+      expect(notifier.state.enabled, true);
+      expect(fakeService.scheduleDailyCallCount, 2);
+
+      // Simulate user revoking permission in Android system settings
+      fakeService.mockPermissionGranted = false;
+      fakeService.mockPlatformEnabled = false;
+
+      final prevCancels = fakeService.cancelCallCount;
+      await notifier.refreshPermissionAndSchedules();
+
+      expect(fakeService.cancelCallCount > prevCancels, true);
     });
   });
 }

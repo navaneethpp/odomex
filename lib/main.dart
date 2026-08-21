@@ -13,6 +13,7 @@ import 'package:odomex/data/sample_vehicle_records.dart';
 import 'package:odomex/data/vehicles.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/models/vehicle.dart';
+import 'package:odomex/providers/notification_settings_provider.dart';
 import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 
@@ -68,11 +69,41 @@ Future<void> main() async {
   );
 }
 
-class MainApp extends ConsumerWidget {
+class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends ConsumerState<MainApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationPermissionProvider.notifier).refresh();
+      ref.read(notificationSettingsProvider.notifier).refreshPermissionAndSchedules();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[Notifications] App resumed: Re-checking actual OS notification permissions...');
+      ref.read(notificationPermissionProvider.notifier).refresh();
+      ref.read(notificationSettingsProvider.notifier).refreshPermissionAndSchedules();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(appThemeModeProvider);
 
     return MaterialApp(

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
 
-/// Card tile for the master notification toggle.
+/// Card tile for the master notification toggle reflecting real operational state and permissions.
 class NotificationMasterTile extends ConsumerWidget {
   const NotificationMasterTile({super.key});
 
@@ -12,13 +12,18 @@ class NotificationMasterTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final settings = ref.watch(notificationSettingsProvider);
+    final permission = ref.watch(notificationPermissionProvider);
+    final isOperational = settings.enabled && permission.notificationGranted;
+    final isPermissionMissing = settings.enabled && !permission.notificationGranted;
 
     return Card(
       elevation: AppSizes.elevationSm,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: isPermissionMissing
+              ? colorScheme.error.withValues(alpha: 0.5)
+              : colorScheme.outlineVariant.withValues(alpha: 0.4),
           width: AppSizes.borderWidth,
         ),
       ),
@@ -31,16 +36,22 @@ class NotificationMasterTile extends ConsumerWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
+                color: isPermissionMissing
+                    ? colorScheme.errorContainer.withValues(alpha: 0.5)
+                    : colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Icon(
-                settings.enabled
+                isOperational
                     ? Icons.notifications_active_rounded
-                    : Icons.notifications_off_outlined,
-                color: settings.enabled
+                    : (isPermissionMissing
+                        ? Icons.notification_important_rounded
+                        : Icons.notifications_off_outlined),
+                color: isOperational
                     ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant,
+                    : (isPermissionMissing
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant),
                 size: AppSizes.iconMd,
               ),
             ),
@@ -60,9 +71,16 @@ class NotificationMasterTile extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Manage your vehicle reminders',
+                    isPermissionMissing
+                        ? 'Permission required in device settings'
+                        : 'Manage your vehicle reminders',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                      color: isPermissionMissing
+                          ? colorScheme.error
+                          : colorScheme.onSurfaceVariant,
+                      fontWeight: isPermissionMissing
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                 ],
@@ -72,9 +90,9 @@ class NotificationMasterTile extends ConsumerWidget {
             // Master Switch
             Semantics(
               label:
-                  'Master notifications toggle. Currently ${settings.enabled ? "enabled" : "disabled"}.',
+                  'Master notifications toggle. Currently ${isOperational ? "enabled" : "disabled"}.',
               child: Switch.adaptive(
-                value: settings.enabled,
+                value: isOperational,
                 onChanged: (value) {
                   ref
                       .read(notificationSettingsProvider.notifier)
