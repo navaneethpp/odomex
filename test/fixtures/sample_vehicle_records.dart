@@ -1,9 +1,6 @@
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 
-/// Realistic sample historical activity records for mock vehicles.
-///
-/// Spans the last 60-90 days with logically increasing odometer progressions,
-/// realistic fuel refills, oil changes, and maintenance services.
+/// Realistic sample historical activity records used exclusively for test fixtures.
 class SampleVehicleRecords {
   SampleVehicleRecords._();
 
@@ -12,9 +9,7 @@ class SampleVehicleRecords {
     final today = DateTime(now.year, now.month, now.day);
 
     return [
-      // ═══════════════════════════════════════════════════════════════════════
-      // VEHICLE 001: Honda Activa 5G (Current Odo: 25,450 km)
-      // ═══════════════════════════════════════════════════════════════════════
+      // VEHICLE 001: Honda Activa 5G
       OdometerRecord(
         id: 'rec_activa_001',
         vehicleId: 'vehicle_001',
@@ -119,9 +114,7 @@ class SampleVehicleRecords {
         notes: 'Trip to office & back',
       ),
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // VEHICLE 002: Hero Splendor Plus (Current Odo: 12,300 km)
-      // ═══════════════════════════════════════════════════════════════════════
+      // VEHICLE 002: Hero Splendor Plus
       OdometerRecord(
         id: 'rec_splendor_001',
         vehicleId: 'vehicle_002',
@@ -164,9 +157,7 @@ class SampleVehicleRecords {
         odometer: 12300,
       ),
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // VEHICLE 004: KTM Duke 200 (Current Odo: 18,750 km)
-      // ═══════════════════════════════════════════════════════════════════════
+      // VEHICLE 004: KTM Duke 200
       OdometerRecord(
         id: 'rec_duke_001',
         vehicleId: 'vehicle_004',

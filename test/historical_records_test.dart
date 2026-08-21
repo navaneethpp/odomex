@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:odomex/data/sample_vehicle_records.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/services/vehicle_usage_analytics.dart';
+import 'fixtures/sample_vehicle_records.dart';
 import 'package:odomex/features/vehicle_records/utils/odometer_consistency_validator.dart';
 
 void main() {

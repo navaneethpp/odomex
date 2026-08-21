@@ -5,12 +5,8 @@ import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
-import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
-import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/data/local/hive_registrar.dart';
-import 'package:odomex/data/sample_vehicle_records.dart';
-import 'package:odomex/data/vehicles.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
@@ -27,27 +23,13 @@ Future<void> main() async {
   registerHiveAdapters();
 
   // 3. Open persistent boxes
-  final vehicleBox = await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
-  final recordBox = await Hive.openBox<VehicleRecord>(HiveBoxes.vehicleRecords);
+  await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
+  await Hive.openBox<VehicleRecord>(HiveBoxes.vehicleRecords);
   final settingsBox = await Hive.openBox<dynamic>(HiveBoxes.appSettings);
   await Hive.openBox<dynamic>(HiveBoxes.vehicleSettings);
   await Hive.openBox<dynamic>(HiveBoxes.vehiclePreferences);
 
-  // 4. Seed initial mock vehicles once if first launch
-  final vehicleDataSource = HiveVehicleLocalDataSource(
-    vehicleBox: vehicleBox,
-    settingsBox: settingsBox,
-  );
-  await vehicleDataSource.seedInitialVehicles(Vehicles.vehicles);
-
-  // 5. Seed initial mock historical records once if first launch
-  final recordDataSource = HiveVehicleRecordLocalDataSource(
-    recordBox: recordBox,
-    settingsBox: settingsBox,
-  );
-  await recordDataSource.seedInitialRecords(SampleVehicleRecords.records);
-
-  // 6. Initialize notification service safely without blocking app startup on error
+  // 4. Initialize notification service safely without blocking app startup on error
   try {
     await NotificationService.instance.initialize();
     final appSettingsDataSource = HiveAppSettingsLocalDataSource(settingsBox: settingsBox);
