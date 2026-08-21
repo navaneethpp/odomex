@@ -12,6 +12,7 @@ class Vehicles {
   static final List<Vehicle> vehicles = [
     Vehicle(
       id: 'vehicle_001',
+      vehicleType: VehicleType.scooter,
       brand: VehicleBrand.honda,
       model: 'Honda Activa 5G',
       manufacturingYear: 2019,
@@ -28,6 +29,7 @@ class Vehicles {
 
     Vehicle(
       id: 'vehicle_002',
+      vehicleType: VehicleType.motorcycle,
       brand: VehicleBrand.hero,
       model: 'Hero Splendor Plus',
       manufacturingYear: 2018,
@@ -44,6 +46,7 @@ class Vehicles {
 
     Vehicle(
       id: 'vehicle_003',
+      vehicleType: VehicleType.scooter,
       brand: VehicleBrand.suzuki,
       model: 'Suzuki Access 125',
       manufacturingYear: 2020,
@@ -60,6 +63,7 @@ class Vehicles {
 
     Vehicle(
       id: 'vehicle_004',
+      vehicleType: VehicleType.motorcycle,
       brand: VehicleBrand.ktm,
       model: 'KTM Duke 200',
       manufacturingYear: 2022,
@@ -76,6 +80,7 @@ class Vehicles {
 
     Vehicle(
       id: 'vehicle_005',
+      vehicleType: VehicleType.motorcycle,
       brand: VehicleBrand.royalEnfield,
       model: 'Royal Enfield Classic 350',
       manufacturingYear: 2021,
@@ -92,6 +97,7 @@ class Vehicles {
 
     Vehicle(
       id: 'vehicle_006',
+      vehicleType: VehicleType.motorcycle,
       brand: VehicleBrand.triumph,
       model: 'Triumph Street Triple',
       manufacturingYear: 2023,
@@ -104,6 +110,106 @@ class Vehicles {
       purchaseDate: DateTime(2023, 9, 10),
       lastServiceDate: DateTime(2026, 8, 1),
       nextServiceOdometer: 15000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_007',
+      vehicleType: VehicleType.autoRickshaw,
+      brand: VehicleBrand.bajaj,
+      model: 'Bajaj RE Compact',
+      manufacturingYear: 2022,
+      odometerReading: 42000,
+      registrationNumber: 'KL 07 MN 3579',
+      color: 'Yellow & Black',
+      fuelType: 'CNG',
+      engineCapacity: 236,
+      engineCapacityUnit: EngineCapacityUnit.cc,
+      purchaseDate: DateTime(2022, 4, 10),
+      lastServiceDate: DateTime(2026, 7, 1),
+      nextServiceOdometer: 45000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_008',
+      vehicleType: VehicleType.car,
+      brand: VehicleBrand.marutiSuzuki,
+      model: 'Maruti Suzuki Swift',
+      manufacturingYear: 2021,
+      odometerReading: 38500,
+      registrationNumber: 'KL 01 OP 7890',
+      color: 'Fire Red',
+      fuelType: 'Petrol',
+      engineCapacity: 1.2,
+      engineCapacityUnit: EngineCapacityUnit.litres,
+      purchaseDate: DateTime(2021, 5, 20),
+      lastServiceDate: DateTime(2026, 5, 12),
+      nextServiceOdometer: 45000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_009',
+      vehicleType: VehicleType.car,
+      brand: VehicleBrand.tataMotors,
+      model: 'Tata Nexon EV',
+      manufacturingYear: 2023,
+      odometerReading: 19200,
+      registrationNumber: 'KL 04 QR 2468',
+      color: 'Teal Blue',
+      fuelType: 'Electric',
+      purchaseDate: DateTime(2023, 2, 14),
+      lastServiceDate: DateTime(2026, 6, 10),
+      nextServiceOdometer: 25000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_010',
+      vehicleType: VehicleType.pickup,
+      brand: VehicleBrand.tataMotors,
+      model: 'Tata Ace Gold',
+      manufacturingYear: 2020,
+      odometerReading: 65000,
+      registrationNumber: 'KL 08 ST 1357',
+      color: 'Arctic White',
+      fuelType: 'Diesel',
+      engineCapacity: 700,
+      engineCapacityUnit: EngineCapacityUnit.cc,
+      purchaseDate: DateTime(2020, 9, 30),
+      lastServiceDate: DateTime(2026, 6, 20),
+      nextServiceOdometer: 70000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_011',
+      vehicleType: VehicleType.van,
+      brand: VehicleBrand.forceMotors,
+      model: 'Force Traveller 3350',
+      manufacturingYear: 2019,
+      odometerReading: 88000,
+      registrationNumber: 'KL 09 UV 9753',
+      color: 'Silver',
+      fuelType: 'Diesel',
+      engineCapacity: 2.6,
+      engineCapacityUnit: EngineCapacityUnit.litres,
+      purchaseDate: DateTime(2019, 11, 25),
+      lastServiceDate: DateTime(2026, 7, 15),
+      nextServiceOdometer: 95000,
+    ),
+
+    Vehicle(
+      id: 'vehicle_012',
+      vehicleType: VehicleType.bus,
+      brand: VehicleBrand.ashokLeyland,
+      model: 'Ashok Leyland Viking',
+      manufacturingYear: 2020,
+      odometerReading: 145000,
+      registrationNumber: 'KL 15 WX 8642',
+      color: 'Blue',
+      fuelType: 'Diesel',
+      engineCapacity: 5.6,
+      engineCapacityUnit: EngineCapacityUnit.litres,
+      purchaseDate: DateTime(2020, 1, 15),
+      lastServiceDate: DateTime(2026, 7, 25),
+      nextServiceOdometer: 155000,
     ),
   ];
 }

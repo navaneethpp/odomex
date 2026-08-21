@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/widgets/notification_preference_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_time_tile.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
 
-/// Card container presenting all individual vehicle reminder preference rows.
+/// Card container presenting all individual vehicle reminder preference rows and custom reminder times.
 class NotificationRemindersCard extends ConsumerWidget {
   const NotificationRemindersCard({super.key});
 
@@ -41,6 +42,18 @@ class NotificationRemindersCard extends ConsumerWidget {
                     .setCategoryEnabled(categories[i], value);
               },
             ),
+            // Custom time selector specifically for Daily Activity
+            if (categories[i] == NotificationCategory.dailyActivity)
+              NotificationTimeTile(
+                title: 'Reminder Time',
+                time: settings.dailyActivityReminderTime,
+                isInteractive: isMasterEnabled && settings.dailyActivity,
+                onTimeChanged: (picked) {
+                  ref
+                      .read(notificationSettingsProvider.notifier)
+                      .setDailyActivityTime(picked);
+                },
+              ),
             if (i < categories.length - 1)
               Divider(
                 height: 1,

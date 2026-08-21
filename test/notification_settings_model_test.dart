@@ -48,10 +48,16 @@ void main() {
   });
 
   group('NotificationSettings Model Tests', () {
-    test('verifies default values (master=false, categories=true)', () {
+    test('verifies default values (master=false, categories=true, time=20:00)', () {
       const settings = NotificationSettings();
       expect(settings.enabled, false);
       expect(settings.dailyActivity, true);
+      expect(settings.dailyActivityReminderHour, 20);
+      expect(settings.dailyActivityReminderMinute, 0);
+      expect(
+        settings.dailyActivityReminderTime,
+        const TimeOfDay(hour: 20, minute: 0),
+      );
       expect(settings.pucReminder, true);
       expect(settings.insuranceReminder, true);
       expect(settings.serviceReminder, true);
@@ -87,12 +93,31 @@ void main() {
       expect(updated.serviceReminder, true);
       expect(updated.oilChangeReminder, true);
       expect(updated.enabled, false);
+      expect(updated.dailyActivityReminderHour, 20);
+      expect(updated.dailyActivityReminderMinute, 0);
+    });
+
+    test('copyWith updates reminder hour and minute', () {
+      const settings = NotificationSettings();
+      final updated = settings.copyWith(
+        dailyActivityReminderHour: 21,
+        dailyActivityReminderMinute: 30,
+      );
+
+      expect(updated.dailyActivityReminderHour, 21);
+      expect(updated.dailyActivityReminderMinute, 30);
+      expect(
+        updated.dailyActivityReminderTime,
+        const TimeOfDay(hour: 21, minute: 30),
+      );
     });
 
     test('toMap and fromMap serialize and deserialize correctly', () {
       const settings = NotificationSettings(
         enabled: true,
         dailyActivity: false,
+        dailyActivityReminderHour: 21,
+        dailyActivityReminderMinute: 30,
         pucReminder: true,
         insuranceReminder: false,
         serviceReminder: true,
@@ -105,6 +130,8 @@ void main() {
       expect(deserialized, settings);
       expect(deserialized.enabled, true);
       expect(deserialized.dailyActivity, false);
+      expect(deserialized.dailyActivityReminderHour, 21);
+      expect(deserialized.dailyActivityReminderMinute, 30);
       expect(deserialized.pucReminder, true);
       expect(deserialized.insuranceReminder, false);
       expect(deserialized.serviceReminder, true);
@@ -117,6 +144,8 @@ void main() {
 
       final fromEmpty = NotificationSettings.fromMap({});
       expect(fromEmpty, const NotificationSettings());
+      expect(fromEmpty.dailyActivityReminderHour, 20);
+      expect(fromEmpty.dailyActivityReminderMinute, 0);
     });
   });
 }

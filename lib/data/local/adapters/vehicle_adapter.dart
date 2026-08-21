@@ -18,6 +18,19 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
 
+    VehicleType? vehicleType;
+    if (fields[24] != null) {
+      if (fields[24] is VehicleType) {
+        vehicleType = fields[24] as VehicleType;
+      } else if (fields[24] is String) {
+        vehicleType = VehicleType.fromStorageKey(fields[24] as String);
+      } else if (fields[24] is int &&
+          fields[24] >= 0 &&
+          fields[24] < VehicleType.values.length) {
+        vehicleType = VehicleType.values[fields[24] as int];
+      }
+    }
+
     return Vehicle(
       id: fields[0] as String?,
       brand: fields[1] as VehicleBrand? ?? VehicleBrand.honda,
@@ -49,13 +62,15 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
                   ? EngineCapacityUnit.litres
                   : EngineCapacityUnit.cc))
           : (fields[8] != null ? EngineCapacityUnit.cc : null),
+      vehicleType: vehicleType,
+      customBrand: fields[25] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Vehicle obj) {
     writer
-      ..writeByte(24) // Total fields
+      ..writeByte(26) // Total fields
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -103,6 +118,10 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       ..writeByte(22)
       ..write(obj.lastAccessedAt)
       ..writeByte(23)
-      ..write(obj.engineCapacityUnit?.name);
+      ..write(obj.engineCapacityUnit?.name)
+      ..writeByte(24)
+      ..write(obj.vehicleType.storageKey)
+      ..writeByte(25)
+      ..write(obj.customBrand);
   }
 }

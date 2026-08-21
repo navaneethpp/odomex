@@ -4,6 +4,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
+import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
 import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
 import 'package:odomex/data/local/data_sources/vehicle_record_local_data_source.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
@@ -48,6 +49,14 @@ Future<void> main() async {
   // 6. Initialize notification service safely without blocking app startup on error
   try {
     await NotificationService.instance.initialize();
+    final appSettingsDataSource = HiveAppSettingsLocalDataSource(settingsBox: settingsBox);
+    final notificationSettings = appSettingsDataSource.getNotificationSettings();
+    await NotificationService.instance.syncDailyActivitySchedule(
+      masterEnabled: notificationSettings.enabled,
+      dailyActivityEnabled: notificationSettings.dailyActivity,
+      hour: notificationSettings.dailyActivityReminderHour,
+      minute: notificationSettings.dailyActivityReminderMinute,
+    );
   } catch (e, st) {
     debugPrint('Failed to initialize NotificationService: $e\n$st');
   }

@@ -17,6 +17,7 @@ import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/add_vehicle_screen.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
+import 'package:odomex/screens/AddVehicleScreen/widgets/searchable_brand_picker.dart';
 import 'package:odomex/screens/HomeScreen/home_screen.dart';
 import 'package:odomex/screens/HomeScreen/widgets/vehicle_card.dart';
 
@@ -163,8 +164,8 @@ void main() {
       expect(find.byType(AddVehicleScreen), findsOneWidget);
 
       // 4. Fill required vehicle fields
-      // Brand dropdown
-      await tester.tap(find.byType(DropdownButtonFormField<VehicleBrand>));
+      // Brand picker
+      await tester.tap(find.byType(SearchableBrandPicker));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Honda').last);
       await tester.pumpAndSettle();
@@ -261,9 +262,11 @@ void main() {
       expect(find.byType(AddVehicleScreen), findsOneWidget);
 
       // Fill required fields
-      await tester.tap(find.byType(DropdownButtonFormField<VehicleBrand>));
+      await tester.tap(find.byType(SearchableBrandPicker));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('KTM').last);
+      await tester.enterText(find.byKey(const Key('brand_search_field')), 'KTM');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'KTM'));
       await tester.pumpAndSettle();
 
       await tester.enterText(

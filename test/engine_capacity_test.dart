@@ -23,6 +23,7 @@ import 'package:odomex/repositories/vehicles_repository.dart';
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/add_vehicle_screen.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
+import 'package:odomex/screens/AddVehicleScreen/widgets/searchable_brand_picker.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/vehicle_details.dart';
 
 class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
@@ -484,9 +485,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Fill brand
-      await tester.tap(find.byType(DropdownButtonFormField<VehicleBrand>));
+      await tester.tap(find.byType(SearchableBrandPicker));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('KTM').last);
+      await tester.enterText(find.byKey(const Key('brand_search_field')), 'KTM');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'KTM'));
       await tester.pumpAndSettle();
 
       // Model

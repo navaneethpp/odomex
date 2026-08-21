@@ -1,11 +1,86 @@
+import 'package:odomex/models/vehicle_type.dart';
+
+export 'package:odomex/models/vehicle_type.dart';
 
 enum VehicleBrand {
+  // ── Existing Two-Wheeler Baseline (Index 0-5 for Hive compatibility) ──
   honda,
   hero,
   suzuki,
   ktm,
   royalEnfield,
   triumph,
+
+  // ── Motorcycles & Scooters ──
+  bajaj,
+  tvs,
+  yamaha,
+  jawa,
+  yezdi,
+  kawasaki,
+  harleyDavidson,
+  bmwMotorrad,
+  aprilia,
+  husqvarna,
+  benelli,
+  ducati,
+  revolt,
+  ultraviolette,
+  olaElectric,
+  ather,
+  vespa,
+  heroElectric,
+  simpleEnergy,
+  river,
+  vida,
+  chetak,
+
+  // ── Auto Rickshaws & Three Wheelers ──
+  piaggio,
+  atulAuto,
+  euler,
+  saarthi,
+  lohia,
+
+  // ── Cars & Passenger Vehicles ──
+  marutiSuzuki,
+  hyundai,
+  tataMotors,
+  mahindra,
+  toyota,
+  kia,
+  renault,
+  nissan,
+  volkswagen,
+  skoda,
+  mg,
+  jeep,
+  citroen,
+  bmw,
+  mercedesBenz,
+  audi,
+  volvo,
+  lexus,
+  landRover,
+  byd,
+  vinfast,
+  porsche,
+  jaguar,
+  mini,
+
+  // ── Pickups, Vans, LCVs & Commercial ──
+  isuzu,
+  forceMotors,
+
+  // ── Buses & Heavy Commercial ──
+  ashokLeyland,
+  eicher,
+  bharatBenz,
+  smlIsuzu,
+  scania,
+
+  // ── Fallback / Custom ──
+  other,
 }
 
 /// Returns a human-friendly display name for a [VehicleBrand] value.
@@ -24,8 +99,129 @@ extension VehicleBrandExtension on VehicleBrand {
         return 'Royal Enfield';
       case VehicleBrand.triumph:
         return 'Triumph';
+      case VehicleBrand.bajaj:
+        return 'Bajaj';
+      case VehicleBrand.tvs:
+        return 'TVS';
+      case VehicleBrand.yamaha:
+        return 'Yamaha';
+      case VehicleBrand.jawa:
+        return 'Jawa';
+      case VehicleBrand.yezdi:
+        return 'Yezdi';
+      case VehicleBrand.kawasaki:
+        return 'Kawasaki';
+      case VehicleBrand.harleyDavidson:
+        return 'Harley-Davidson';
+      case VehicleBrand.bmwMotorrad:
+        return 'BMW Motorrad';
+      case VehicleBrand.aprilia:
+        return 'Aprilia';
+      case VehicleBrand.husqvarna:
+        return 'Husqvarna';
+      case VehicleBrand.benelli:
+        return 'Benelli';
+      case VehicleBrand.ducati:
+        return 'Ducati';
+      case VehicleBrand.revolt:
+        return 'Revolt';
+      case VehicleBrand.ultraviolette:
+        return 'Ultraviolette';
+      case VehicleBrand.olaElectric:
+        return 'Ola Electric';
+      case VehicleBrand.ather:
+        return 'Ather';
+      case VehicleBrand.vespa:
+        return 'Vespa';
+      case VehicleBrand.heroElectric:
+        return 'Hero Electric';
+      case VehicleBrand.simpleEnergy:
+        return 'Simple Energy';
+      case VehicleBrand.river:
+        return 'River';
+      case VehicleBrand.vida:
+        return 'Vida';
+      case VehicleBrand.chetak:
+        return 'Chetak';
+      case VehicleBrand.piaggio:
+        return 'Piaggio';
+      case VehicleBrand.atulAuto:
+        return 'Atul Auto';
+      case VehicleBrand.euler:
+        return 'Euler Motors';
+      case VehicleBrand.saarthi:
+        return 'Saarthi';
+      case VehicleBrand.lohia:
+        return 'Lohia Auto';
+      case VehicleBrand.marutiSuzuki:
+        return 'Maruti Suzuki';
+      case VehicleBrand.hyundai:
+        return 'Hyundai';
+      case VehicleBrand.tataMotors:
+        return 'Tata Motors';
+      case VehicleBrand.mahindra:
+        return 'Mahindra';
+      case VehicleBrand.toyota:
+        return 'Toyota';
+      case VehicleBrand.kia:
+        return 'Kia';
+      case VehicleBrand.renault:
+        return 'Renault';
+      case VehicleBrand.nissan:
+        return 'Nissan';
+      case VehicleBrand.volkswagen:
+        return 'Volkswagen';
+      case VehicleBrand.skoda:
+        return 'Skoda';
+      case VehicleBrand.mg:
+        return 'MG';
+      case VehicleBrand.jeep:
+        return 'Jeep';
+      case VehicleBrand.citroen:
+        return 'Citroën';
+      case VehicleBrand.bmw:
+        return 'BMW';
+      case VehicleBrand.mercedesBenz:
+        return 'Mercedes-Benz';
+      case VehicleBrand.audi:
+        return 'Audi';
+      case VehicleBrand.volvo:
+        return 'Volvo';
+      case VehicleBrand.lexus:
+        return 'Lexus';
+      case VehicleBrand.landRover:
+        return 'Land Rover';
+      case VehicleBrand.byd:
+        return 'BYD';
+      case VehicleBrand.vinfast:
+        return 'VinFast';
+      case VehicleBrand.porsche:
+        return 'Porsche';
+      case VehicleBrand.jaguar:
+        return 'Jaguar';
+      case VehicleBrand.mini:
+        return 'MINI';
+      case VehicleBrand.isuzu:
+        return 'Isuzu';
+      case VehicleBrand.forceMotors:
+        return 'Force Motors';
+      case VehicleBrand.ashokLeyland:
+        return 'Ashok Leyland';
+      case VehicleBrand.eicher:
+        return 'Eicher';
+      case VehicleBrand.bharatBenz:
+        return 'BharatBenz';
+      case VehicleBrand.smlIsuzu:
+        return 'SML Isuzu';
+      case VehicleBrand.scania:
+        return 'Scania';
+      case VehicleBrand.other:
+        return 'Other';
     }
   }
+
+  /// Stable string identifier for persistence and serialization.
+  String get id => name;
 }
 
 /// Measurement unit for vehicle engine displacement.
@@ -60,7 +256,9 @@ extension EngineCapacityUnitExtension on EngineCapacityUnit {
 class Vehicle {
   Vehicle({
     String? id,
+    VehicleType? vehicleType,
     required this.brand,
+    this.customBrand,
     required this.model,
     required this.manufacturingYear,
     required this.odometerReading,
@@ -85,7 +283,6 @@ class Vehicle {
     this.pucEndDate,
 
     // Oil change information
-    // These store the latest values; historical records will later move to OilChangeRecord
     this.oilChangeInterval,
     this.lastOilChangeOdometer,
     this.lastOilChangeDate,
@@ -93,6 +290,7 @@ class Vehicle {
     // Access tracking
     this.lastAccessedAt,
   })  : id = id ?? _generateId(),
+        vehicleType = vehicleType ?? _inferVehicleType(model, brand),
         engineCapacityUnit = engineCapacityUnit ??
             (engineCapacity != null ? EngineCapacityUnit.cc : null);
 
@@ -101,33 +299,100 @@ class Vehicle {
   // ─────────────────────────────────────────────
 
   /// Stable, unique identifier for this vehicle.
-  ///
-  /// Generated automatically when not supplied. Uses a microsecond timestamp
-  /// combined with a hashCode salt to avoid collisions when multiple vehicles
-  /// are created in quick succession.
-  ///
-  /// When persisting to a database, store and restore this value so that all
-  /// related records (OdometerRecord, FuelRecord, etc.) can keep referencing
-  /// the same vehicleId without re-generating it.
   final String id;
 
   static String _generateId() {
     final ts = DateTime.now().microsecondsSinceEpoch;
-    // XOR with a pseudo-random value for extra uniqueness within the same µs.
     final salt = Object().hashCode;
     return '${ts ^ salt}';
+  }
+
+  /// Infers the appropriate [VehicleType] for legacy vehicles where vehicleType was not stored.
+  static VehicleType _inferVehicleType(String model, VehicleBrand brand) {
+    final lower = model.toLowerCase();
+    if (lower.contains('activa') ||
+        lower.contains('jupiter') ||
+        lower.contains('access') ||
+        lower.contains('ntorq') ||
+        lower.contains('pleasure') ||
+        lower.contains('dio') ||
+        lower.contains('burgman') ||
+        lower.contains('ray') ||
+        lower.contains('fascino') ||
+        lower.contains('destini') ||
+        lower.contains('maestro') ||
+        lower.contains('ather') ||
+        lower.contains('ola') ||
+        lower.contains('chetak') ||
+        lower.contains('vespa') ||
+        lower.contains('aerox')) {
+      return VehicleType.scooter;
+    }
+    if (lower.contains('swift') ||
+        lower.contains('nexon') ||
+        lower.contains('city') ||
+        lower.contains('creta') ||
+        lower.contains('innova') ||
+        lower.contains('i20') ||
+        lower.contains('baleno') ||
+        lower.contains('fortuner') ||
+        lower.contains('harrier') ||
+        lower.contains('thar') ||
+        lower.contains('scorpio')) {
+      return VehicleType.car;
+    }
+    if (lower.contains('ace') ||
+        lower.contains('bolero maxi') ||
+        lower.contains('d-max') ||
+        lower.contains('dmax') ||
+        lower.contains('hilux')) {
+      return VehicleType.pickup;
+    }
+    if (lower.contains('traveller') ||
+        lower.contains('eeco') ||
+        lower.contains('omni') ||
+        lower.contains('winger')) {
+      return VehicleType.van;
+    }
+    if (lower.contains('bus') ||
+        lower.contains('viking') ||
+        lower.contains('starbus') ||
+        lower.contains('skyliner')) {
+      return VehicleType.bus;
+    }
+    if (lower.contains('auto') ||
+        lower.contains('rickshaw') ||
+        lower.contains('ape') ||
+        lower.contains('compact') ||
+        lower.contains('maxima') ||
+        lower.contains('alfa')) {
+      return VehicleType.autoRickshaw;
+    }
+    return VehicleType.motorcycle;
   }
 
   // ─────────────────────────────────────────────
   // VEHICLE IDENTIFICATION
   // ─────────────────────────────────────────────
 
+  final VehicleType vehicleType;
   final VehicleBrand brand;
+  final String? customBrand;
   final String model;
   final int manufacturingYear;
 
   final String registrationNumber;
   final String color;
+
+  /// Returns the effective display name for the brand (supports custom brands).
+  String get brandDisplayName {
+    if (brand == VehicleBrand.other &&
+        customBrand != null &&
+        customBrand!.trim().isNotEmpty) {
+      return customBrand!.trim();
+    }
+    return brand.displayName;
+  }
 
   // ─────────────────────────────────────────────
   // ODOMETER
@@ -157,8 +422,6 @@ class Vehicle {
 
   // ─────────────────────────────────────────────
   // SERVICE INFORMATION
-  // Nullable: new vehicles may not have service records yet.
-  // Historical records will later move to a dedicated ServiceRecord model.
   // ─────────────────────────────────────────────
 
   final DateTime? lastServiceDate;
@@ -166,7 +429,6 @@ class Vehicle {
 
   // ─────────────────────────────────────────────
   // INSURANCE INFORMATION
-  // Nullable: insurance details are optional at vehicle creation.
   // ─────────────────────────────────────────────
 
   final String? insuranceProvider;
@@ -176,7 +438,6 @@ class Vehicle {
 
   // ─────────────────────────────────────────────
   // PUC (POLLUTION UNDER CONTROL) INFORMATION
-  // Nullable: PUC details are optional at vehicle creation.
   // ─────────────────────────────────────────────
 
   final String? pucCertificateNumber;
@@ -185,9 +446,6 @@ class Vehicle {
 
   // ─────────────────────────────────────────────
   // OIL CHANGE INFORMATION
-  // Nullable: oil change details are optional at vehicle creation.
-  // Stores the current/latest values only.
-  // Historical oil change records will later move to an OilChangeRecord model.
   // ─────────────────────────────────────────────
 
   /// Oil change interval in kilometres.
@@ -202,14 +460,6 @@ class Vehicle {
   // ACCESS TRACKING
   // ─────────────────────────────────────────────
 
-  /// The last time the user opened the Vehicle Details screen for this vehicle.
-  ///
-  /// Null for vehicles that have never been viewed since the app started.
-  /// Updated via [VehicleNotifier.markVehicleAsAccessed] — never set
-  /// automatically on creation or on data edits.
-  ///
-  /// When persistent storage is introduced, this field should be stored and
-  /// restored alongside the vehicle so that the access order survives restarts.
   final DateTime? lastAccessedAt;
 
   // ─────────────────────────────────────────────
@@ -236,12 +486,10 @@ class Vehicle {
   // COPY WITH
   // ─────────────────────────────────────────────
 
-  /// Returns a copy of this vehicle with the given fields replaced.
-  ///
-  /// The [id] is preserved so that all related records still reference the
-  /// correct vehicle after an update.
   Vehicle copyWith({
+    VehicleType? vehicleType,
     VehicleBrand? brand,
+    String? customBrand,
     String? model,
     int? manufacturingYear,
     double? odometerReading,
@@ -263,14 +511,13 @@ class Vehicle {
     double? oilChangeInterval,
     double? lastOilChangeOdometer,
     DateTime? lastOilChangeDate,
-    // Use an Object? sentinel so callers can explicitly clear lastAccessedAt
-    // by passing null.  Ordinary copyWith fields cannot do this because
-    // `null ?? this.field` always falls back to `this.field`.
     Object? lastAccessedAt = _kUnset,
   }) {
     return Vehicle(
-      id: id, // always preserved
+      id: id,
+      vehicleType: vehicleType ?? this.vehicleType,
       brand: brand ?? this.brand,
+      customBrand: customBrand ?? this.customBrand,
       model: model ?? this.model,
       manufacturingYear: manufacturingYear ?? this.manufacturingYear,
       odometerReading: odometerReading ?? this.odometerReading,

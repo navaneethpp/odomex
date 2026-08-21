@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:odomex/core/notifications/notification_constants.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 /// Callback signature for handling tapped notifications with payload.
 typedef NotificationTapCallback = void Function(String? payload);
 
-/// A centralized, reusable service for managing local notifications.
+/// A centralized, reusable service for managing local notifications and scheduling.
 ///
 /// Encapsulates package-specific configuration, permission requests,
-/// channel initialization, and notification dispatching.
+/// channel initialization, and notification dispatching/scheduling.
 class NotificationService {
   NotificationService._({FlutterLocalNotificationsPlugin? plugin})
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -31,13 +33,15 @@ class NotificationService {
   /// Whether the notification plugin has been successfully initialized.
   bool get isInitialized => _isInitialized;
 
-  /// Initializes the local notification plugin and configures the default Android channel.
+  /// Initializes the local notification plugin, timezones, and default Android channel.
   ///
   /// Safe to call during app startup; permissions are not requested here.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
+      tz.initializeTimeZones();
+
       const androidSettings = AndroidInitializationSettings(
         NotificationConstants.androidNotificationIcon,
       );
@@ -69,7 +73,8 @@ class NotificationService {
   }
 
   void _onNotificationResponse(NotificationResponse response) {
-    debugPrint('NotificationService: Notification tapped (payload: ${response.payload})');
+    debugPrint(
+        'NotificationService: Notification tapped (payload: ${response.payload})');
     onNotificationTapped?.call(response.payload);
   }
 
@@ -91,7 +96,8 @@ class NotificationService {
         await androidPlugin.createNotificationChannel(channel);
       }
     } catch (e) {
-      debugPrint('NotificationService: Failed to create notification channel: $e');
+      debugPrint(
+          'NotificationService: Failed to create notification channel: $e');
     }
   }
 
@@ -171,10 +177,13 @@ class NotificationService {
     String? payload,
     String channelId = NotificationConstants.remindersChannelId,
     String channelName = NotificationConstants.remindersChannelName,
-    String channelDescription = NotificationConstants.remindersChannelDescription,
+    String channelDescription =
+        NotificationConstants.remindersChannelDescription,
     Importance importance = Importance.high,
     Priority priority = Priority.high,
   }) async {
+    if (!_isInitialized) return;
+
     try {
       final androidDetails = AndroidNotificationDetails(
         channelId,
@@ -209,6 +218,110 @@ class NotificationService {
     }
   }
 
+  /// Schedules a daily recurring notification at the specified local [hour] and [minute].
+  Future<void> scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+    String channelId = NotificationConstants.remindersChannelId,
+    String channelName = NotificationConstants.remindersChannelName,
+    String channelDescription =
+        NotificationConstants.remindersChannelDescription,
+    Importance importance = Importance.high,
+    Priority priority = Priority.high,
+  }) async {
+    if (!_isInitialized) return;
+
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: importance,
+        priority: priority,
+        icon: NotificationConstants.androidNotificationIcon,
+      );
+
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
+      final scheduledDate = _nextInstanceOfTime(hour, minute);
+
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: payload,
+      );
+    } catch (e, st) {
+      debugPrint(
+          'NotificationService: Failed to schedule daily notification ($e)\n$st');
+    }
+  }
+
+  /// Calculates the next occurrence of [hour] and [minute] in the device's local timezone.
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
+  /// Synchronizes the daily activity reminder schedule based on preferences and OS permission.
+  ///
+  /// Automatically cancels any previous schedule before recreating to prevent duplicates.
+  Future<void> syncDailyActivitySchedule({
+    required bool masterEnabled,
+    required bool dailyActivityEnabled,
+    required int hour,
+    required int minute,
+  }) async {
+    if (!_isInitialized) return;
+
+    if (masterEnabled && dailyActivityEnabled) {
+      final hasPermission = await areNotificationsEnabled();
+      if (hasPermission) {
+        await cancel(NotificationConstants.dailyActivityNotificationId);
+        await scheduleDailyNotification(
+          id: NotificationConstants.dailyActivityNotificationId,
+          title: NotificationConstants.dailyActivityTitle,
+          body: NotificationConstants.dailyActivityBody,
+          hour: hour,
+          minute: minute,
+          payload: NotificationConstants.payloadTypeDailyActivity,
+        );
+        return;
+      }
+    }
+
+    await cancel(NotificationConstants.dailyActivityNotificationId);
+  }
+
   /// Displays the predefined Odomex Test Notification.
   Future<void> showTestNotification() async {
     await showNotification(
@@ -221,6 +334,8 @@ class NotificationService {
 
   /// Cancels a specific notification by [id].
   Future<void> cancel(int id) async {
+    if (!_isInitialized) return;
+
     try {
       await _plugin.cancel(id: id);
     } catch (e) {
@@ -230,6 +345,8 @@ class NotificationService {
 
   /// Cancels all pending and displayed notifications.
   Future<void> cancelAll() async {
+    if (!_isInitialized) return;
+
     try {
       await _plugin.cancelAll();
     } catch (e) {

@@ -8,15 +8,23 @@ class VehicleBrandAdapter extends TypeAdapter<VehicleBrand> {
 
   @override
   VehicleBrand read(BinaryReader reader) {
-    final index = reader.readByte();
-    if (index >= 0 && index < VehicleBrand.values.length) {
-      return VehicleBrand.values[index];
+    final raw = reader.read();
+    if (raw is int) {
+      if (raw >= 0 && raw < VehicleBrand.values.length) {
+        return VehicleBrand.values[raw];
+      }
+    } else if (raw is String) {
+      for (final b in VehicleBrand.values) {
+        if (b.name == raw || b.id == raw) {
+          return b;
+        }
+      }
     }
     return VehicleBrand.honda; // fallback
   }
 
   @override
   void write(BinaryWriter writer, VehicleBrand obj) {
-    writer.writeByte(obj.index);
+    writer.write(obj.index);
   }
 }

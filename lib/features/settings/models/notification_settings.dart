@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:odomex/core/notifications/notification_constants.dart';
 
 /// Distinct categories of vehicle notifications and reminders supported in Odomex.
 enum NotificationCategory {
@@ -79,6 +80,10 @@ class NotificationSettings {
   const NotificationSettings({
     this.enabled = false,
     this.dailyActivity = true,
+    this.dailyActivityReminderHour =
+        NotificationConstants.defaultDailyActivityHour,
+    this.dailyActivityReminderMinute =
+        NotificationConstants.defaultDailyActivityMinute,
     this.pucReminder = true,
     this.insuranceReminder = true,
     this.serviceReminder = true,
@@ -90,6 +95,18 @@ class NotificationSettings {
 
   /// Whether daily activity recording reminders are enabled.
   final bool dailyActivity;
+
+  /// Hour of the day (0-23) when the daily activity reminder should trigger.
+  final int dailyActivityReminderHour;
+
+  /// Minute of the hour (0-59) when the daily activity reminder should trigger.
+  final int dailyActivityReminderMinute;
+
+  /// Returns the daily activity reminder time as a Flutter [TimeOfDay].
+  TimeOfDay get dailyActivityReminderTime => TimeOfDay(
+        hour: dailyActivityReminderHour,
+        minute: dailyActivityReminderMinute,
+      );
 
   /// Whether PUC expiry reminders are enabled.
   final bool pucReminder;
@@ -141,6 +158,8 @@ class NotificationSettings {
   NotificationSettings copyWith({
     bool? enabled,
     bool? dailyActivity,
+    int? dailyActivityReminderHour,
+    int? dailyActivityReminderMinute,
     bool? pucReminder,
     bool? insuranceReminder,
     bool? serviceReminder,
@@ -149,6 +168,10 @@ class NotificationSettings {
     return NotificationSettings(
       enabled: enabled ?? this.enabled,
       dailyActivity: dailyActivity ?? this.dailyActivity,
+      dailyActivityReminderHour:
+          dailyActivityReminderHour ?? this.dailyActivityReminderHour,
+      dailyActivityReminderMinute:
+          dailyActivityReminderMinute ?? this.dailyActivityReminderMinute,
       pucReminder: pucReminder ?? this.pucReminder,
       insuranceReminder: insuranceReminder ?? this.insuranceReminder,
       serviceReminder: serviceReminder ?? this.serviceReminder,
@@ -160,6 +183,8 @@ class NotificationSettings {
     return {
       'enabled': enabled,
       NotificationCategory.dailyActivity.storageKey: dailyActivity,
+      'daily_activity_hour': dailyActivityReminderHour,
+      'daily_activity_minute': dailyActivityReminderMinute,
       NotificationCategory.pucReminder.storageKey: pucReminder,
       NotificationCategory.insuranceReminder.storageKey: insuranceReminder,
       NotificationCategory.serviceReminder.storageKey: serviceReminder,
@@ -174,6 +199,10 @@ class NotificationSettings {
       enabled: map['enabled'] as bool? ?? false,
       dailyActivity:
           map[NotificationCategory.dailyActivity.storageKey] as bool? ?? true,
+      dailyActivityReminderHour: map['daily_activity_hour'] as int? ??
+          NotificationConstants.defaultDailyActivityHour,
+      dailyActivityReminderMinute: map['daily_activity_minute'] as int? ??
+          NotificationConstants.defaultDailyActivityMinute,
       pucReminder:
           map[NotificationCategory.pucReminder.storageKey] as bool? ?? true,
       insuranceReminder:
@@ -194,6 +223,8 @@ class NotificationSettings {
           runtimeType == other.runtimeType &&
           enabled == other.enabled &&
           dailyActivity == other.dailyActivity &&
+          dailyActivityReminderHour == other.dailyActivityReminderHour &&
+          dailyActivityReminderMinute == other.dailyActivityReminderMinute &&
           pucReminder == other.pucReminder &&
           insuranceReminder == other.insuranceReminder &&
           serviceReminder == other.serviceReminder &&
@@ -203,6 +234,8 @@ class NotificationSettings {
   int get hashCode => Object.hash(
         enabled,
         dailyActivity,
+        dailyActivityReminderHour,
+        dailyActivityReminderMinute,
         pucReminder,
         insuranceReminder,
         serviceReminder,

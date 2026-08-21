@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/core/utils/puc_utils.dart';
 import 'package:odomex/core/validation/vehicle_validators.dart';
+import 'package:odomex/data/vehicle_catalog.dart';
 import 'package:odomex/features/onboarding/providers/onboarding_provider.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
@@ -11,6 +12,7 @@ import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/calculated_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/form_section_card.dart';
+import 'package:odomex/screens/AddVehicleScreen/widgets/searchable_brand_picker.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
 /// Screen for adding a new vehicle to the in-memory vehicle repository.
@@ -42,7 +44,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   // 1. VEHICLE INFORMATION
   // ─────────────────────────────────────────────
 
+  VehicleType _vehicleType = VehicleType.motorcycle;
   VehicleBrand? _brand;
+  String? _customBrandName;
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _regNumberController = TextEditingController();
@@ -223,7 +227,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         normaliseRegistrationNumber(_regNumberController.text.trim());
 
     final vehicle = Vehicle(
+      vehicleType: _vehicleType,
       brand: _brand!,
+      customBrand: _customBrandName,
       model: _modelController.text.trim(),
       manufacturingYear: _parsedYear,
       odometerReading: double.parse(_odometerController.text.trim()),
@@ -361,19 +367,50 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
     return FormSectionCard(
       title: 'Vehicle Information',
       children: [
-        // Brand
-        DropdownButtonFormField<VehicleBrand>(
-          initialValue: _brand,
-          decoration: const InputDecoration(labelText: 'Brand *'),
-          items: VehicleBrand.values
+        // Vehicle Type
+        DropdownButtonFormField<VehicleType>(
+          initialValue: _vehicleType,
+          decoration: const InputDecoration(labelText: 'Vehicle Type *'),
+          items: VehicleType.values
               .map(
-                (b) => DropdownMenuItem(
-                  value: b,
-                  child: Text(b.displayName),
+                (type) => DropdownMenuItem(
+                  value: type,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(type.icon, size: 20),
+                      const SizedBox(width: AppSizes.spacingSm),
+                      Text(type.displayName),
+                    ],
+                  ),
                 ),
               )
               .toList(),
-          onChanged: (value) => setState(() => _brand = value),
+          onChanged: (value) {
+            if (value != null && value != _vehicleType) {
+              setState(() {
+                _vehicleType = value;
+                if (_brand != null &&
+                    !VehicleCatalog.isBrandSupported(value, _brand!)) {
+                  _brand = null;
+                  _customBrandName = null;
+                }
+              });
+            }
+          },
+        ),
+
+        // Brand (Searchable selection modal)
+        SearchableBrandPicker(
+          vehicleType: _vehicleType,
+          selectedBrand: _brand,
+          customBrandName: _customBrandName,
+          onBrandSelected: (brand, custom) {
+            setState(() {
+              _brand = brand;
+              _customBrandName = custom;
+            });
+          },
           validator: (value) => validateBrand(value),
         ),
 
@@ -383,7 +420,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
             labelText: 'Model *',
-            hintText: 'e.g. Activa 5G',
+            hintText: 'e.g. Activa 5G or Swift',
           ),
           validator: (v) => validateModel(v),
         ),

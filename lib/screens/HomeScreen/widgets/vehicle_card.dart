@@ -28,7 +28,7 @@ class VehicleCard extends StatelessWidget {
 
     return Semantics(
       label:
-          '${vehicle.brand.displayName} ${vehicle.model}, ${vehicle.odometerReading.toStringAsFixed(0)} km. ${isPinned ? "Pinned. " : ""}Long press for vehicle actions.',
+          '${vehicle.brandDisplayName} ${vehicle.model}, ${vehicle.vehicleType.displayName}, ${vehicle.odometerReading.toStringAsFixed(0)} km. ${isPinned ? "Pinned. " : ""}Long press for vehicle actions.',
       button: true,
       child: Card(
         elevation: AppSizes.elevationSm,
@@ -78,11 +78,21 @@ class VehicleCard extends StatelessWidget {
                       const SizedBox(
                         height: AppSizes.spacingSm,
                       ),
-                      Text(
-                        '${vehicle.odometerReading.toStringAsFixed(0)} km',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            vehicle.vehicleType.icon,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${vehicle.vehicleType.displayName} · ${vehicle.odometerReading.toStringAsFixed(0)} km',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

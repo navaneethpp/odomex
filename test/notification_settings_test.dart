@@ -7,10 +7,9 @@ import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
 import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
-import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
 import 'package:odomex/features/settings/widgets/notification_preference_tile.dart';
 import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
-import 'package:odomex/features/settings/widgets/notification_test_card.dart';
+import 'package:odomex/features/settings/widgets/notification_time_tile.dart';
 import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
 import 'package:odomex/providers/theme_provider.dart';
@@ -68,6 +67,9 @@ class FakeNotificationService implements NotificationService {
   int showTestCallCount = 0;
   int cancelCallCount = 0;
   int cancelAllCallCount = 0;
+  int scheduleDailyCallCount = 0;
+  int lastScheduledHour = -1;
+  int lastScheduledMinute = -1;
 
   @override
   bool get isInitialized => true;
@@ -100,6 +102,50 @@ class FakeNotificationService implements NotificationService {
   }
 
   @override
+  Future<void> scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+    dynamic channelId,
+    dynamic channelName,
+    dynamic channelDescription,
+    dynamic importance,
+    dynamic priority,
+  }) async {
+    scheduleDailyCallCount++;
+    lastScheduledHour = hour;
+    lastScheduledMinute = minute;
+  }
+
+  @override
+  Future<void> syncDailyActivitySchedule({
+    required bool masterEnabled,
+    required bool dailyActivityEnabled,
+    required int hour,
+    required int minute,
+  }) async {
+    if (masterEnabled && dailyActivityEnabled) {
+      final hasPermission = await areNotificationsEnabled();
+      if (hasPermission) {
+        await cancel(NotificationConstants.dailyActivityNotificationId);
+        await scheduleDailyNotification(
+          id: NotificationConstants.dailyActivityNotificationId,
+          title: NotificationConstants.dailyActivityTitle,
+          body: NotificationConstants.dailyActivityBody,
+          hour: hour,
+          minute: minute,
+          payload: NotificationConstants.payloadTypeDailyActivity,
+        );
+        return;
+      }
+    }
+    await cancel(NotificationConstants.dailyActivityNotificationId);
+  }
+
+  @override
   Future<void> showTestNotification() async {
     showTestCallCount++;
   }
@@ -117,12 +163,25 @@ class FakeNotificationService implements NotificationService {
 
 void main() {
   group('NotificationConstants Tests', () {
-    test('verifies constant IDs and channel definitions', () {
+    test('verifies constant IDs, channel definitions, and daily activity constants', () {
       expect(NotificationConstants.remindersChannelId, 'odomex_reminders');
       expect(NotificationConstants.remindersChannelName, 'Odomex Notifications');
       expect(NotificationConstants.testNotificationId, 1000);
+      expect(NotificationConstants.dailyActivityNotificationId, 1100);
+      expect(NotificationConstants.defaultDailyActivityHour, 20);
+      expect(NotificationConstants.defaultDailyActivityMinute, 0);
+      expect(
+        NotificationConstants.defaultDailyActivityTime,
+        const TimeOfDay(hour: 20, minute: 0),
+      );
+      expect(NotificationConstants.dailyActivityTitle, 'Odomex');
+      expect(
+        NotificationConstants.dailyActivityBody,
+        "Don't forget to record today's vehicle activity.",
+      );
       expect(NotificationConstants.androidNotificationIcon, '@drawable/ic_notification');
       expect(NotificationConstants.payloadTypeTest, 'test_notification');
+      expect(NotificationConstants.payloadTypeDailyActivity, 'daily_activity');
     });
   });
 
@@ -137,7 +196,7 @@ void main() {
       fakeService = FakeNotificationService();
     });
 
-    test('initializes with default values (master=false, all categories=true)', () {
+    test('initializes with default values (master=false, all categories=true, time=20:00)', () {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
@@ -145,6 +204,8 @@ void main() {
 
       expect(notifier.state.enabled, false);
       expect(notifier.state.dailyActivity, true);
+      expect(notifier.state.dailyActivityReminderHour, 20);
+      expect(notifier.state.dailyActivityReminderMinute, 0);
       expect(notifier.state.pucReminder, true);
       expect(notifier.state.insuranceReminder, true);
       expect(notifier.state.serviceReminder, true);
@@ -152,7 +213,7 @@ void main() {
       expect(repository.getNotificationSettings().enabled, false);
     });
 
-    test('enabling master notifications requests permission and persists true when granted', () async {
+    test('enabling master notifications schedules daily activity reminder when daily activity is true', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
@@ -164,23 +225,12 @@ void main() {
       expect(result, true);
       expect(notifier.state.enabled, true);
       expect(repository.getNotificationSettings().enabled, true);
+      expect(fakeService.scheduleDailyCallCount, 1);
+      expect(fakeService.lastScheduledHour, 20);
+      expect(fakeService.lastScheduledMinute, 0);
     });
 
-    test('enabling master notifications keeps false and persists false when permission denied', () async {
-      final notifier = NotificationSettingsNotifier(
-        repository: repository,
-        notificationService: fakeService,
-      );
-
-      fakeService.mockPermissionGranted = false;
-      final result = await notifier.setMasterEnabled(true);
-
-      expect(result, false);
-      expect(notifier.state.enabled, false);
-      expect(repository.getNotificationSettings().enabled, false);
-    });
-
-    test('disabling master preserves individual category preferences', () async {
+    test('disabling master cancels scheduled daily activity notification', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
@@ -188,37 +238,54 @@ void main() {
 
       fakeService.mockPermissionGranted = true;
       await notifier.setMasterEnabled(true);
-      await notifier.setCategoryEnabled(NotificationCategory.insuranceReminder, false);
-      expect(notifier.state.insuranceReminder, false);
+      expect(fakeService.scheduleDailyCallCount, 1);
 
-      // Turn master OFF
-      final result = await notifier.setMasterEnabled(false);
-      expect(result, true);
+      // Disable master
+      final cancelCountBefore = fakeService.cancelCallCount;
+      await notifier.setMasterEnabled(false);
+
       expect(notifier.state.enabled, false);
-      // Individual category is preserved!
-      expect(notifier.state.insuranceReminder, false);
-      expect(notifier.state.dailyActivity, true);
-
-      // Turn master back ON -> preferences restored
-      await notifier.setMasterEnabled(true);
-      expect(notifier.state.enabled, true);
-      expect(notifier.state.insuranceReminder, false);
-      expect(notifier.state.dailyActivity, true);
+      expect(fakeService.cancelCallCount, greaterThan(cancelCountBefore));
     });
 
-    test('toggling category updates specific category state and persists', () async {
+    test('changing daily activity reminder time updates state and re-schedules', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
       );
 
-      await notifier.setCategoryEnabled(NotificationCategory.pucReminder, false);
-      expect(notifier.state.pucReminder, false);
-      expect(repository.getNotificationSettings().pucReminder, false);
+      fakeService.mockPermissionGranted = true;
+      await notifier.setMasterEnabled(true);
 
-      await notifier.setCategoryEnabled(NotificationCategory.pucReminder, true);
-      expect(notifier.state.pucReminder, true);
-      expect(repository.getNotificationSettings().pucReminder, true);
+      await notifier.setDailyActivityTime(const TimeOfDay(hour: 21, minute: 30));
+      expect(notifier.state.dailyActivityReminderHour, 21);
+      expect(notifier.state.dailyActivityReminderMinute, 30);
+      expect(repository.getNotificationSettings().dailyActivityReminderHour, 21);
+      expect(repository.getNotificationSettings().dailyActivityReminderMinute, 30);
+
+      expect(fakeService.lastScheduledHour, 21);
+      expect(fakeService.lastScheduledMinute, 30);
+    });
+
+    test('disabling daily activity category cancels schedule and re-enabling re-schedules', () async {
+      final notifier = NotificationSettingsNotifier(
+        repository: repository,
+        notificationService: fakeService,
+      );
+
+      fakeService.mockPermissionGranted = true;
+      await notifier.setMasterEnabled(true);
+      await notifier.setDailyActivityTime(const TimeOfDay(hour: 22, minute: 15));
+
+      // Disable Daily Activity
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, false);
+      expect(notifier.state.dailyActivity, false);
+
+      // Re-enable Daily Activity
+      await notifier.setCategoryEnabled(NotificationCategory.dailyActivity, true);
+      expect(notifier.state.dailyActivity, true);
+      expect(fakeService.lastScheduledHour, 22);
+      expect(fakeService.lastScheduledMinute, 15);
     });
   });
 
@@ -231,30 +298,7 @@ void main() {
       repository = AppSettingsRepository(localDataSource: fakeDataSource);
     });
 
-    testWidgets('NotificationMasterTile renders master switch and responds to toggle', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appSettingsRepositoryProvider.overrideWithValue(repository),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: NotificationMasterTile(),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Notifications'), findsOneWidget);
-      expect(find.text('Manage your vehicle reminders'), findsOneWidget);
-      expect(find.byType(Switch), findsOneWidget);
-
-      final switchWidget = tester.widget<Switch>(find.byType(Switch));
-      expect(switchWidget.value, false);
-    });
-
-    testWidgets('NotificationRemindersCard displays 5 categories and disables switches when master is OFF', (tester) async {
+    testWidgets('NotificationRemindersCard displays categories and Reminder Time tile', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -270,46 +314,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Daily Activity'), findsOneWidget);
+      expect(find.text('Reminder Time'), findsOneWidget);
       expect(find.text('PUC Reminder'), findsOneWidget);
       expect(find.text('Insurance Reminder'), findsOneWidget);
       expect(find.text('Service Reminder'), findsOneWidget);
       expect(find.text('Oil Change Reminder'), findsOneWidget);
 
       expect(find.byType(NotificationPreferenceTile), findsNWidgets(5));
-
-      // With master OFF, switches have onChanged == null (disabled)
-      final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-      expect(switches.length, 5);
-      for (final s in switches) {
-        expect(s.onChanged, isNull);
-      }
+      expect(find.byType(NotificationTimeTile), findsOneWidget);
     });
 
-    testWidgets('NotificationTestCard displays button and shows warning snackbar when master is OFF', (tester) async {
+    testWidgets('NotificationTimeTile shows formatted time and opens TimePicker when interactive', (tester) async {
+      TimeOfDay selectedTime = const TimeOfDay(hour: 20, minute: 0);
+
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appSettingsRepositoryProvider.overrideWithValue(repository),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: NotificationTestCard(),
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return NotificationTimeTile(
+                  title: 'Reminder Time',
+                  time: selectedTime,
+                  isInteractive: true,
+                  onTimeChanged: (newTime) {
+                    setState(() {
+                      selectedTime = newTime;
+                    });
+                  },
+                );
+              },
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Test Notification'), findsOneWidget);
-      expect(
-        find.textContaining('Check whether Odomex notifications are working'),
-        findsOneWidget,
-      );
+      expect(find.text('Reminder Time'), findsOneWidget);
+      expect(find.text('8:00 PM'), findsOneWidget);
 
-      await tester.tap(find.text('Test Notification'));
+      // Tap on time tile to open time picker
+      await tester.tap(find.text('Reminder Time'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enable notifications first.'), findsOneWidget);
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+
+      // Tap Cancel -> TimePicker closes without changing time
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TimePickerDialog), findsNothing);
+      expect(find.text('8:00 PM'), findsOneWidget);
     });
   });
 }

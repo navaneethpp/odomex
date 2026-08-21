@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/models/vehicle.dart';
 
-/// Compact header card identifying the vehicle: name, brand/year, and
+/// Compact header card identifying the vehicle: name, brand/type/year, and
 /// registration number. Shown at the very top of the details screen.
 class VehicleHeaderCard extends StatelessWidget {
   final Vehicle vehicle;
@@ -20,7 +20,7 @@ class VehicleHeaderCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Vehicle icon badge
+            // Vehicle category icon badge
             Container(
               width: 52,
               height: 52,
@@ -29,7 +29,7 @@ class VehicleHeaderCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSizes.radiusLg),
               ),
               child: Icon(
-                Icons.two_wheeler_rounded,
+                vehicle.vehicleType.icon,
                 size: AppSizes.iconXl,
                 color: colorScheme.onPrimaryContainer,
               ),
@@ -55,7 +55,7 @@ class VehicleHeaderCard extends StatelessWidget {
                   const SizedBox(height: AppSizes.spacingXs),
 
                   Text(
-                    '${vehicle.brand.displayName} · ${vehicle.manufacturingYear}',
+                    '${vehicle.brandDisplayName} · ${vehicle.vehicleType.displayName} · ${vehicle.manufacturingYear}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

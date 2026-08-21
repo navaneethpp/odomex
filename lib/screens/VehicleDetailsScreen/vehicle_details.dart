@@ -300,7 +300,8 @@ class VehicleDetailsScreen extends ConsumerWidget {
             const SectionTitle(title: 'Vehicle Information'),
             InfoListCard(
               rows: [
-                InfoRow(label: 'Brand', value: vehicle.brand.displayName),
+                InfoRow(label: 'Vehicle Type', value: vehicle.vehicleType.displayName),
+                InfoRow(label: 'Brand', value: vehicle.brandDisplayName),
                 InfoRow(
                     label: 'Year',
                     value: vehicle.manufacturingYear.toString()),

@@ -13,16 +13,32 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
   })  : _repository = repository,
         _notificationService =
             notificationService ?? NotificationService.instance,
-        super(repository.getNotificationSettings());
+        super(repository.getNotificationSettings()) {
+    _syncSchedules(state);
+  }
 
   final AppSettingsRepository _repository;
   final NotificationService _notificationService;
+
+  /// Synchronizes active notification schedules with the current [settings].
+  Future<void> _syncSchedules(NotificationSettings settings) async {
+    try {
+      await _notificationService.syncDailyActivitySchedule(
+        masterEnabled: settings.enabled,
+        dailyActivityEnabled: settings.dailyActivity,
+        hour: settings.dailyActivityReminderHour,
+        minute: settings.dailyActivityReminderMinute,
+      );
+    } catch (e) {
+      debugPrint('NotificationSettingsNotifier: Schedule sync failed: $e');
+    }
+  }
 
   /// Toggles the master notification switch.
   ///
   /// When enabling, requests OS permission. If denied, resets master to `false`
   /// and shows an informative snackbar without crashing.
-  /// When disabling, individual category preferences are preserved internally.
+  /// When disabling, individual category preferences and custom times are preserved.
   Future<bool> setMasterEnabled(
     bool enable, {
     BuildContext? context,
@@ -31,6 +47,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
       final updated = state.copyWith(enabled: false);
       await _repository.saveNotificationSettings(updated);
       state = updated;
+      await _syncSchedules(updated);
       return true;
     }
 
@@ -40,11 +57,13 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
       final updated = state.copyWith(enabled: true);
       await _repository.saveNotificationSettings(updated);
       state = updated;
+      await _syncSchedules(updated);
       return true;
     } else {
       final updated = state.copyWith(enabled: false);
       await _repository.saveNotificationSettings(updated);
       state = updated;
+      await _syncSchedules(updated);
       if (context != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -74,6 +93,23 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
     final updated = state.copyWithCategory(category, isEnabled);
     await _repository.saveNotificationSettings(updated);
     state = updated;
+    await _syncSchedules(updated);
+  }
+
+  /// Sets the daily activity reminder time and updates the schedule if active.
+  Future<void> setDailyActivityTime(TimeOfDay time) async {
+    if (state.dailyActivityReminderHour == time.hour &&
+        state.dailyActivityReminderMinute == time.minute) {
+      return;
+    }
+
+    final updated = state.copyWith(
+      dailyActivityReminderHour: time.hour,
+      dailyActivityReminderMinute: time.minute,
+    );
+    await _repository.saveNotificationSettings(updated);
+    state = updated;
+    await _syncSchedules(updated);
   }
 
   /// Triggers a test notification if master notifications are enabled.
@@ -111,10 +147,19 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
   }
 }
 
+/// Exposes the [NotificationService] instance.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService.instance;
+});
+
 /// Exposes current [NotificationSettings] as reactive state.
 final notificationSettingsProvider =
     StateNotifierProvider<NotificationSettingsNotifier, NotificationSettings>(
         (ref) {
   final repository = ref.watch(appSettingsRepositoryProvider);
-  return NotificationSettingsNotifier(repository: repository);
+  final notificationService = ref.watch(notificationServiceProvider);
+  return NotificationSettingsNotifier(
+    repository: repository,
+    notificationService: notificationService,
+  );
 });
