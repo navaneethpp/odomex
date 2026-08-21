@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/core/utils/engine_capacity_formatter.dart';
 import 'package:odomex/core/utils/vehicle_status.dart';
 import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 import 'package:odomex/models/vehicle.dart';
@@ -323,9 +324,10 @@ class VehicleDetailsScreen extends ConsumerWidget {
                 InfoRow(label: 'Fuel Type', value: vehicle.fuelType),
                 InfoRow(
                   label: 'Engine',
-                  value: vehicle.engineCapacity != null
-                      ? '${vehicle.engineCapacity} cc'
-                      : 'Electric',
+                  value: formatEngineCapacity(
+                    vehicle.engineCapacity,
+                    vehicle.engineCapacityUnit,
+                  ),
                 ),
               ],
             ),

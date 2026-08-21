@@ -55,6 +55,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   String? _fuelType;
   final _customFuelController = TextEditingController();
   final _engineCapacityController = TextEditingController();
+  EngineCapacityUnit _engineCapacityUnit = EngineCapacityUnit.cc;
 
   static const String _otherFuel = 'Other';
   static const String _electricFuel = 'Electric';
@@ -232,7 +233,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       // Electric vehicles have no engine displacement.
       engineCapacity: _isElectric
           ? null
-          : int.tryParse(_engineCapacityController.text.trim()),
+          : double.tryParse(_engineCapacityController.text.trim()),
+      engineCapacityUnit: _isElectric ? null : _engineCapacityUnit,
       purchaseDate: _purchaseDate!,
 
       // Insurance — only persisted when the user filled the section.
@@ -474,22 +476,73 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           ),
 
         // Engine Capacity — hidden for electric vehicles
-        if (!_isElectric)
+        if (!_isElectric) ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Engine Capacity Unit',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: AppSizes.spacingSm),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<EngineCapacityUnit>(
+                  segments: const [
+                    ButtonSegment<EngineCapacityUnit>(
+                      value: EngineCapacityUnit.cc,
+                      label: Text('CC'),
+                      tooltip: 'Engine capacity in CC',
+                    ),
+                    ButtonSegment<EngineCapacityUnit>(
+                      value: EngineCapacityUnit.litres,
+                      label: Text('Litres'),
+                      tooltip: 'Engine capacity in Litres',
+                    ),
+                  ],
+                  selected: {_engineCapacityUnit},
+                  onSelectionChanged: (newSelection) {
+                    setState(() {
+                      _engineCapacityUnit = newSelection.first;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
           TextFormField(
             controller: _engineCapacityController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(5),
-            ],
-            decoration: const InputDecoration(
+            keyboardType: _engineCapacityUnit == EngineCapacityUnit.cc
+                ? TextInputType.number
+                : const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: _engineCapacityUnit == EngineCapacityUnit.cc
+                ? [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(5),
+                  ]
+                : [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,2}'),
+                    ),
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+            decoration: InputDecoration(
               labelText: 'Engine Capacity *',
-              hintText: 'e.g. 109',
-              suffixText: 'cc',
+              hintText: _engineCapacityUnit == EngineCapacityUnit.cc
+                  ? 'e.g. 109'
+                  : 'e.g. 1.09',
+              suffixText: _engineCapacityUnit.shortName,
             ),
-            validator: (v) =>
-                validateEngineCapacity(v, isElectric: _isElectric),
+            validator: (v) => validateEngineCapacity(
+              v,
+              isElectric: _isElectric,
+              unit: _engineCapacityUnit,
+            ),
           ),
+        ],
 
         // Informational note for electric vehicles
         if (_isElectric)

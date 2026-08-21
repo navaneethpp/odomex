@@ -4,7 +4,7 @@ import 'package:odomex/models/vehicle.dart';
 /// Hive TypeAdapter for [Vehicle] model.
 ///
 /// Encapsulates serialization of all vehicle specifications, document
-/// details, maintenance records, and access timestamps.
+/// details, maintenance records, access timestamps, and engine capacity units.
 ///
 /// Uses indexed field mapping for forward and backward schema compatibility.
 class VehicleAdapter extends TypeAdapter<Vehicle> {
@@ -27,7 +27,7 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       registrationNumber: fields[5] as String? ?? '',
       color: fields[6] as String? ?? '',
       fuelType: fields[7] as String? ?? 'Petrol',
-      engineCapacity: fields[8] as int?,
+      engineCapacity: (fields[8] as num?)?.toDouble(),
       purchaseDate: fields[9] as DateTime? ?? DateTime.now(),
       lastServiceDate: fields[10] as DateTime?,
       nextServiceOdometer: (fields[11] as num?)?.toDouble(),
@@ -42,13 +42,20 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       lastOilChangeOdometer: (fields[20] as num?)?.toDouble(),
       lastOilChangeDate: fields[21] as DateTime?,
       lastAccessedAt: fields[22] as DateTime?,
+      engineCapacityUnit: fields[23] != null
+          ? (fields[23] is EngineCapacityUnit
+              ? fields[23] as EngineCapacityUnit
+              : (fields[23] == 'litres'
+                  ? EngineCapacityUnit.litres
+                  : EngineCapacityUnit.cc))
+          : (fields[8] != null ? EngineCapacityUnit.cc : null),
     );
   }
 
   @override
   void write(BinaryWriter writer, Vehicle obj) {
     writer
-      ..writeByte(23) // Total fields
+      ..writeByte(24) // Total fields
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -94,6 +101,8 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       ..writeByte(21)
       ..write(obj.lastOilChangeDate)
       ..writeByte(22)
-      ..write(obj.lastAccessedAt);
+      ..write(obj.lastAccessedAt)
+      ..writeByte(23)
+      ..write(obj.engineCapacityUnit?.name);
   }
 }

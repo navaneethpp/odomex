@@ -8,6 +8,8 @@
 
 library;
 
+import 'package:odomex/models/vehicle.dart';
+
 // ─────────────────────────────────────────────
 // APPLICATION CONSTANTS
 // ─────────────────────────────────────────────
@@ -19,6 +21,10 @@ const int kMinManufacturingYear = 1886;
 /// Maximum plausible engine displacement for a consumer road vehicle (cc).
 /// Electric vehicles are exempt from this limit.
 const int kMaxEngineCapacityCC = 10000;
+
+/// Maximum plausible engine displacement for a consumer road vehicle (litres).
+/// Electric vehicles are exempt from this limit.
+const double kMaxEngineCapacityLitres = 12.0;
 
 const int kModelMinLength = 2;
 const int kModelMaxLength = 50;
@@ -151,19 +157,41 @@ String? validateCustomFuelType(String? value) {
   return null;
 }
 
-/// Engine capacity in cc.
+/// Engine capacity validator for CC and Litres.
 /// Pass [isElectric] = true to skip validation for electric vehicles.
-String? validateEngineCapacity(String? value, {required bool isElectric}) {
+String? validateEngineCapacity(
+  String? value, {
+  required bool isElectric,
+  EngineCapacityUnit unit = EngineCapacityUnit.cc,
+}) {
   if (isElectric) return null;
   final v = value?.trim() ?? '';
   if (v.isEmpty) return 'Engine capacity is required.';
-  final cc = int.tryParse(v);
-  if (cc == null) return 'Enter a valid engine capacity.';
-  if (cc <= 0) return 'Engine capacity must be greater than 0.';
-  if (cc > kMaxEngineCapacityCC) {
-    return 'Enter a realistic engine capacity (max $kMaxEngineCapacityCC cc).';
+
+  switch (unit) {
+    case EngineCapacityUnit.cc:
+      final cc = int.tryParse(v);
+      if (cc == null) return 'Please enter a valid engine capacity in CC.';
+      if (cc <= 0) return 'Engine capacity must be greater than 0.';
+      if (cc > kMaxEngineCapacityCC) {
+        return 'Enter a realistic engine capacity (max $kMaxEngineCapacityCC cc).';
+      }
+      return null;
+
+    case EngineCapacityUnit.litres:
+      final litres = double.tryParse(v);
+      if (litres == null) {
+        return 'Please enter a valid engine capacity in litres.';
+      }
+      if (litres <= 0) return 'Engine capacity must be greater than 0.';
+      if (litres > kMaxEngineCapacityLitres) {
+        return 'Enter a realistic engine capacity (max ${kMaxEngineCapacityLitres.toStringAsFixed(0)} L).';
+      }
+      if (v.contains('.') && v.split('.')[1].length > 2) {
+        return 'Engine capacity in litres can have at most 2 decimal places.';
+      }
+      return null;
   }
-  return null;
 }
 
 /// Current odometer reading.

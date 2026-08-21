@@ -28,6 +28,35 @@ extension VehicleBrandExtension on VehicleBrand {
   }
 }
 
+/// Measurement unit for vehicle engine displacement.
+enum EngineCapacityUnit {
+  cc,
+  litres,
+}
+
+/// Presentation and formatting helpers for [EngineCapacityUnit].
+extension EngineCapacityUnitExtension on EngineCapacityUnit {
+  /// User-facing label for selectors (e.g. 'CC', 'Litres').
+  String get displayName {
+    switch (this) {
+      case EngineCapacityUnit.cc:
+        return 'CC';
+      case EngineCapacityUnit.litres:
+        return 'Litres';
+    }
+  }
+
+  /// Compact unit abbreviation (e.g. 'cc', 'L').
+  String get shortName {
+    switch (this) {
+      case EngineCapacityUnit.cc:
+        return 'cc';
+      case EngineCapacityUnit.litres:
+        return 'L';
+    }
+  }
+}
+
 class Vehicle {
   Vehicle({
     String? id,
@@ -39,6 +68,7 @@ class Vehicle {
     required this.color,
     required this.fuelType,
     this.engineCapacity,
+    EngineCapacityUnit? engineCapacityUnit,
     required this.purchaseDate,
     this.lastServiceDate,
     this.nextServiceOdometer,
@@ -62,7 +92,9 @@ class Vehicle {
 
     // Access tracking
     this.lastAccessedAt,
-  }) : id = id ?? _generateId();
+  })  : id = id ?? _generateId(),
+        engineCapacityUnit = engineCapacityUnit ??
+            (engineCapacity != null ? EngineCapacityUnit.cc : null);
 
   // ─────────────────────────────────────────────
   // UNIQUE IDENTIFIER
@@ -109,9 +141,13 @@ class Vehicle {
 
   final String fuelType;
 
-  /// Engine displacement in cubic centimetres (cc).
-  /// Null for electric vehicles, which have no cc displacement.
-  final int? engineCapacity;
+  /// Engine displacement value (numeric in CC or decimal in Litres).
+  /// Null for electric vehicles, which have no displacement.
+  final double? engineCapacity;
+
+  /// The unit associated with [engineCapacity] (CC or Litres).
+  /// Null for electric vehicles.
+  final EngineCapacityUnit? engineCapacityUnit;
 
   // ─────────────────────────────────────────────
   // USAGE
@@ -212,7 +248,8 @@ class Vehicle {
     String? registrationNumber,
     String? color,
     String? fuelType,
-    int? engineCapacity,
+    double? engineCapacity,
+    EngineCapacityUnit? engineCapacityUnit,
     DateTime? purchaseDate,
     DateTime? lastServiceDate,
     double? nextServiceOdometer,
@@ -241,6 +278,7 @@ class Vehicle {
       color: color ?? this.color,
       fuelType: fuelType ?? this.fuelType,
       engineCapacity: engineCapacity ?? this.engineCapacity,
+      engineCapacityUnit: engineCapacityUnit ?? this.engineCapacityUnit,
       purchaseDate: purchaseDate ?? this.purchaseDate,
       lastServiceDate: lastServiceDate ?? this.lastServiceDate,
       nextServiceOdometer: nextServiceOdometer ?? this.nextServiceOdometer,
