@@ -3,6 +3,7 @@ import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
 import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
+import 'package:odomex/features/settings/widgets/notification_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/settings_section_title.dart';
 import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
@@ -41,7 +42,13 @@ class SettingsScreen extends StatelessWidget {
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 4. Vehicle Defaults ───────────────────
+            // ── 4. Notifications ───────────────────────
+            SettingsSectionTitle(title: 'NOTIFICATIONS'),
+            NotificationSettingTile(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 5. Vehicle Defaults ───────────────────
             SettingsSectionTitle(title: 'VEHICLE DEFAULTS'),
             VehicleDefaultsSettingTile(),
 

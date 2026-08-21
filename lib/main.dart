@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
@@ -43,6 +44,13 @@ Future<void> main() async {
     settingsBox: settingsBox,
   );
   await recordDataSource.seedInitialRecords(SampleVehicleRecords.records);
+
+  // 6. Initialize notification service safely without blocking app startup on error
+  try {
+    await NotificationService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('Failed to initialize NotificationService: $e\n$st');
+  }
 
   runApp(
     const ProviderScope(

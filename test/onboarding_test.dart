@@ -40,6 +40,12 @@ class FakeOnboardingAppSettingsDataSource implements AppSettingsLocalDataSource 
 
   @override
   Future<void> saveVehicleSortOption(VehicleSortOption option) async {}
+
+  @override
+  bool getNotificationsEnabled() => false;
+
+  @override
+  Future<void> saveNotificationsEnabled(bool enabled) async {}
 }
 
 void main() {

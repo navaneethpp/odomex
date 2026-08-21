@@ -49,6 +49,12 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> saveVehicleSortOption(VehicleSortOption option) async {}
+
+  @override
+  bool getNotificationsEnabled() => false;
+
+  @override
+  Future<void> saveNotificationsEnabled(bool enabled) async {}
 }
 
 class FakeVehicleLocalDataSource implements VehicleLocalDataSource {

@@ -29,6 +29,12 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists onboarding completion status.
   Future<void> setOnboardingCompleted(bool completed);
+
+  /// Returns whether local notifications are enabled by the user (default: false).
+  bool getNotificationsEnabled();
+
+  /// Persists notification preference into local storage.
+  Future<void> saveNotificationsEnabled(bool enabled);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -49,6 +55,7 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _globalVehicleSettingsKey = 'global_vehicle_settings';
   static const String _vehicleSortOptionKey = 'vehicle_sort_option';
   static const String _onboardingCompletedKey = 'onboarding_completed';
+  static const String _notificationsEnabledKey = 'notifications_enabled';
 
   @override
   AppThemeMode getThemeMode() {
@@ -127,6 +134,26 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
     final box = _settingsBox;
     if (box != null) {
       await box.put(_onboardingCompletedKey, completed);
+    }
+  }
+
+  @override
+  bool getNotificationsEnabled() {
+    final box = _settingsBox;
+    if (box != null) {
+      final val = box.get(_notificationsEnabledKey);
+      if (val is bool) {
+        return val;
+      }
+    }
+    return false;
+  }
+
+  @override
+  Future<void> saveNotificationsEnabled(bool enabled) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_notificationsEnabledKey, enabled);
     }
   }
 }

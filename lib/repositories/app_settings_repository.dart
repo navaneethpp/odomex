@@ -42,4 +42,11 @@ class AppSettingsRepository {
   /// Sets and persists onboarding completion status.
   Future<void> setOnboardingCompleted(bool completed) =>
       localDataSource.setOnboardingCompleted(completed);
+
+  /// Returns whether local notifications are enabled by the user (default: false).
+  bool getNotificationsEnabled() => localDataSource.getNotificationsEnabled();
+
+  /// Persists notification preference.
+  Future<void> saveNotificationsEnabled(bool enabled) =>
+      localDataSource.saveNotificationsEnabled(enabled);
 }
