@@ -6,7 +6,9 @@ import 'package:odomex/features/settings/screens/settings_screen.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
 import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
-import 'package:odomex/features/settings/widgets/notification_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
+import 'package:odomex/features/settings/widgets/notification_test_card.dart';
 import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
 
@@ -22,7 +24,7 @@ void main() {
   });
 
   group('SettingsScreen Tests', () {
-    testWidgets('renders About, DeveloperBadge, Appearance, Notifications, Vehicle Defaults, and Vehicle List sections',
+    testWidgets('renders About, DeveloperBadge, Appearance, Notifications, Reminders, Testing, Vehicle Defaults, and Vehicle List sections',
         (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
@@ -37,13 +39,17 @@ void main() {
       expect(find.text('ABOUT'), findsOneWidget);
       expect(find.text('APPEARANCE'), findsOneWidget);
       expect(find.text('NOTIFICATIONS'), findsOneWidget);
+      expect(find.text('REMINDERS'), findsOneWidget);
+      expect(find.text('TESTING'), findsOneWidget);
       expect(find.text('VEHICLE DEFAULTS'), findsOneWidget);
       expect(find.text('VEHICLE LIST'), findsOneWidget);
       expect(find.text('DEVELOPER'), findsNothing);
       expect(find.byType(AboutAppCard), findsOneWidget);
       expect(find.byType(DeveloperBadge), findsOneWidget);
       expect(find.byType(AppearanceSettingTile), findsOneWidget);
-      expect(find.byType(NotificationSettingTile), findsOneWidget);
+      expect(find.byType(NotificationMasterTile), findsOneWidget);
+      expect(find.byType(NotificationRemindersCard), findsOneWidget);
+      expect(find.byType(NotificationTestCard), findsOneWidget);
       expect(find.byType(VehicleDefaultsSettingTile), findsOneWidget);
       expect(find.byType(VehicleSortSettingTile), findsOneWidget);
     });

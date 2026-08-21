@@ -5,6 +5,7 @@ import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
 import 'package:odomex/features/onboarding/data/onboarding_story_pages.dart';
 import 'package:odomex/features/onboarding/screens/onboarding_screen.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
 import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
 import 'package:odomex/providers/theme_provider.dart';
@@ -46,6 +47,13 @@ class FakeOnboardingAppSettingsDataSource implements AppSettingsLocalDataSource 
 
   @override
   Future<void> saveNotificationsEnabled(bool enabled) async {}
+
+  @override
+  NotificationSettings getNotificationSettings() =>
+      const NotificationSettings();
+
+  @override
+  Future<void> saveNotificationSettings(NotificationSettings settings) async {}
 }
 
 void main() {

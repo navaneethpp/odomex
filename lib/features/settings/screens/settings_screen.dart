@@ -3,7 +3,9 @@ import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
 import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
-import 'package:odomex/features/settings/widgets/notification_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
+import 'package:odomex/features/settings/widgets/notification_test_card.dart';
 import 'package:odomex/features/settings/widgets/settings_section_title.dart';
 import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
@@ -44,17 +46,29 @@ class SettingsScreen extends StatelessWidget {
 
             // ── 4. Notifications ───────────────────────
             SettingsSectionTitle(title: 'NOTIFICATIONS'),
-            NotificationSettingTile(),
+            NotificationMasterTile(),
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 5. Vehicle Defaults ───────────────────
+            // ── 5. Reminder Preferences ───────────────
+            SettingsSectionTitle(title: 'REMINDERS'),
+            NotificationRemindersCard(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 6. Testing ────────────────────────────
+            SettingsSectionTitle(title: 'TESTING'),
+            NotificationTestCard(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 7. Vehicle Defaults ───────────────────
             SettingsSectionTitle(title: 'VEHICLE DEFAULTS'),
             VehicleDefaultsSettingTile(),
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 5. Vehicle List Preferences ───────────
+            // ── 8. Vehicle List Preferences ───────────
             SettingsSectionTitle(title: 'VEHICLE LIST'),
             VehicleSortSettingTile(),
           ],

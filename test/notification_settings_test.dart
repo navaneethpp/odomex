@@ -5,22 +5,34 @@ import 'package:odomex/core/notifications/notification_constants.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
-import 'package:odomex/features/settings/widgets/notification_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_preference_tile.dart';
+import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
+import 'package:odomex/features/settings/widgets/notification_test_card.dart';
 import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
 import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/repositories/app_settings_repository.dart';
 
 class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
-  bool _notificationsEnabled = false;
+  NotificationSettings _settings = const NotificationSettings();
 
   @override
-  bool getNotificationsEnabled() => _notificationsEnabled;
+  bool getNotificationsEnabled() => _settings.enabled;
 
   @override
   Future<void> saveNotificationsEnabled(bool enabled) async {
-    _notificationsEnabled = enabled;
+    _settings = _settings.copyWith(enabled: enabled);
+  }
+
+  @override
+  NotificationSettings getNotificationSettings() => _settings;
+
+  @override
+  Future<void> saveNotificationSettings(NotificationSettings settings) async {
+    _settings = settings;
   }
 
   @override
@@ -125,62 +137,92 @@ void main() {
       fakeService = FakeNotificationService();
     });
 
-    test('initializes with default value (false)', () {
+    test('initializes with default values (master=false, all categories=true)', () {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
       );
 
-      expect(notifier.state, false);
-      expect(repository.getNotificationsEnabled(), false);
+      expect(notifier.state.enabled, false);
+      expect(notifier.state.dailyActivity, true);
+      expect(notifier.state.pucReminder, true);
+      expect(notifier.state.insuranceReminder, true);
+      expect(notifier.state.serviceReminder, true);
+      expect(notifier.state.oilChangeReminder, true);
+      expect(repository.getNotificationSettings().enabled, false);
     });
 
-    test('enabling notifications requests permission and persists true when granted', () async {
+    test('enabling master notifications requests permission and persists true when granted', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
       );
 
       fakeService.mockPermissionGranted = true;
-      final result = await notifier.setNotificationsEnabled(true);
+      final result = await notifier.setMasterEnabled(true);
 
       expect(result, true);
-      expect(notifier.state, true);
-      expect(repository.getNotificationsEnabled(), true);
+      expect(notifier.state.enabled, true);
+      expect(repository.getNotificationSettings().enabled, true);
     });
 
-    test('enabling notifications keeps false and persists false when permission denied', () async {
+    test('enabling master notifications keeps false and persists false when permission denied', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
       );
 
       fakeService.mockPermissionGranted = false;
-      final result = await notifier.setNotificationsEnabled(true);
+      final result = await notifier.setMasterEnabled(true);
 
       expect(result, false);
-      expect(notifier.state, false);
-      expect(repository.getNotificationsEnabled(), false);
+      expect(notifier.state.enabled, false);
+      expect(repository.getNotificationSettings().enabled, false);
     });
 
-    test('disabling notifications updates state and persists false without requesting permission', () async {
+    test('disabling master preserves individual category preferences', () async {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
       );
 
       fakeService.mockPermissionGranted = true;
-      await notifier.setNotificationsEnabled(true);
-      expect(notifier.state, true);
+      await notifier.setMasterEnabled(true);
+      await notifier.setCategoryEnabled(NotificationCategory.insuranceReminder, false);
+      expect(notifier.state.insuranceReminder, false);
 
-      final result = await notifier.setNotificationsEnabled(false);
+      // Turn master OFF
+      final result = await notifier.setMasterEnabled(false);
       expect(result, true);
-      expect(notifier.state, false);
-      expect(repository.getNotificationsEnabled(), false);
+      expect(notifier.state.enabled, false);
+      // Individual category is preserved!
+      expect(notifier.state.insuranceReminder, false);
+      expect(notifier.state.dailyActivity, true);
+
+      // Turn master back ON -> preferences restored
+      await notifier.setMasterEnabled(true);
+      expect(notifier.state.enabled, true);
+      expect(notifier.state.insuranceReminder, false);
+      expect(notifier.state.dailyActivity, true);
+    });
+
+    test('toggling category updates specific category state and persists', () async {
+      final notifier = NotificationSettingsNotifier(
+        repository: repository,
+        notificationService: fakeService,
+      );
+
+      await notifier.setCategoryEnabled(NotificationCategory.pucReminder, false);
+      expect(notifier.state.pucReminder, false);
+      expect(repository.getNotificationSettings().pucReminder, false);
+
+      await notifier.setCategoryEnabled(NotificationCategory.pucReminder, true);
+      expect(notifier.state.pucReminder, true);
+      expect(repository.getNotificationSettings().pucReminder, true);
     });
   });
 
-  group('NotificationSettingTile Widget Tests', () {
+  group('Notification Widgets Tests', () {
     late FakeAppSettingsLocalDataSource fakeDataSource;
     late AppSettingsRepository repository;
 
@@ -189,7 +231,7 @@ void main() {
       repository = AppSettingsRepository(localDataSource: fakeDataSource);
     });
 
-    testWidgets('renders tile elements, switch state, and test button', (tester) async {
+    testWidgets('NotificationMasterTile renders master switch and responds to toggle', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -197,7 +239,7 @@ void main() {
           ],
           child: const MaterialApp(
             home: Scaffold(
-              body: NotificationSettingTile(),
+              body: NotificationMasterTile(),
             ),
           ),
         ),
@@ -205,15 +247,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Notifications'), findsOneWidget);
-      expect(find.text('Receive reminders and updates'), findsOneWidget);
-      expect(find.text('Test Notification'), findsOneWidget);
+      expect(find.text('Manage your vehicle reminders'), findsOneWidget);
       expect(find.byType(Switch), findsOneWidget);
 
       final switchWidget = tester.widget<Switch>(find.byType(Switch));
       expect(switchWidget.value, false);
     });
 
-    testWidgets('tapping Test Notification when disabled shows warning snackbar', (tester) async {
+    testWidgets('NotificationRemindersCard displays 5 categories and disables switches when master is OFF', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -221,12 +262,49 @@ void main() {
           ],
           child: const MaterialApp(
             home: Scaffold(
-              body: NotificationSettingTile(),
+              body: NotificationRemindersCard(),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
+
+      expect(find.text('Daily Activity'), findsOneWidget);
+      expect(find.text('PUC Reminder'), findsOneWidget);
+      expect(find.text('Insurance Reminder'), findsOneWidget);
+      expect(find.text('Service Reminder'), findsOneWidget);
+      expect(find.text('Oil Change Reminder'), findsOneWidget);
+
+      expect(find.byType(NotificationPreferenceTile), findsNWidgets(5));
+
+      // With master OFF, switches have onChanged == null (disabled)
+      final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
+      expect(switches.length, 5);
+      for (final s in switches) {
+        expect(s.onChanged, isNull);
+      }
+    });
+
+    testWidgets('NotificationTestCard displays button and shows warning snackbar when master is OFF', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appSettingsRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: NotificationTestCard(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Test Notification'), findsOneWidget);
+      expect(
+        find.textContaining('Check whether Odomex notifications are working'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Test Notification'));
       await tester.pumpAndSettle();

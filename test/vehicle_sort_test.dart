@@ -8,6 +8,7 @@ import 'package:odomex/data/local/data_sources/app_settings_local_data_source.da
 import 'package:odomex/data/local/data_sources/vehicle_local_data_source.dart';
 import 'package:odomex/data/local/data_sources/vehicle_preferences_local_data_source.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
 import 'package:odomex/features/settings/widgets/vehicle_sort_setting_tile.dart';
 import 'package:odomex/features/vehicle_preferences/models/vehicle_preferences.dart';
@@ -55,6 +56,13 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> saveNotificationsEnabled(bool enabled) async {}
+
+  @override
+  NotificationSettings getNotificationSettings() =>
+      const NotificationSettings();
+
+  @override
+  Future<void> saveNotificationSettings(NotificationSettings settings) async {}
 }
 
 class FakeVehicleLocalDataSource implements VehicleLocalDataSource {

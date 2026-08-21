@@ -1,44 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/repositories/app_settings_repository.dart';
 
-/// Manages the application notification enabled state as reactive, persistent Riverpod state.
-class NotificationSettingsNotifier extends StateNotifier<bool> {
+/// Manages application notification preferences as reactive, persistent Riverpod state.
+class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
   NotificationSettingsNotifier({
     required AppSettingsRepository repository,
     NotificationService? notificationService,
   })  : _repository = repository,
-        _notificationService = notificationService ?? NotificationService.instance,
-        super(repository.getNotificationsEnabled());
+        _notificationService =
+            notificationService ?? NotificationService.instance,
+        super(repository.getNotificationSettings());
 
   final AppSettingsRepository _repository;
   final NotificationService _notificationService;
 
-  /// Toggles notifications on or off.
+  /// Toggles the master notification switch.
   ///
-  /// When enabling, requests platform permission. If denied, resets state to `false`
+  /// When enabling, requests OS permission. If denied, resets master to `false`
   /// and shows an informative snackbar without crashing.
-  Future<bool> setNotificationsEnabled(
+  /// When disabling, individual category preferences are preserved internally.
+  Future<bool> setMasterEnabled(
     bool enable, {
     BuildContext? context,
   }) async {
     if (!enable) {
-      await _repository.saveNotificationsEnabled(false);
-      state = false;
+      final updated = state.copyWith(enabled: false);
+      await _repository.saveNotificationSettings(updated);
+      state = updated;
       return true;
     }
 
     // Request OS permission when user enables
     final granted = await _notificationService.requestPermission();
     if (granted) {
-      await _repository.saveNotificationsEnabled(true);
-      state = true;
+      final updated = state.copyWith(enabled: true);
+      await _repository.saveNotificationSettings(updated);
+      state = updated;
       return true;
     } else {
-      await _repository.saveNotificationsEnabled(false);
-      state = false;
+      final updated = state.copyWith(enabled: false);
+      await _repository.saveNotificationSettings(updated);
+      state = updated;
       if (context != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -53,11 +59,28 @@ class NotificationSettingsNotifier extends StateNotifier<bool> {
     }
   }
 
-  /// Triggers a test notification if notifications are enabled.
+  /// Convenience alias for [setMasterEnabled].
+  Future<bool> setNotificationsEnabled(
+    bool enable, {
+    BuildContext? context,
+  }) =>
+      setMasterEnabled(enable, context: context);
+
+  /// Toggles an individual notification category preference.
+  Future<void> setCategoryEnabled(
+    NotificationCategory category,
+    bool isEnabled,
+  ) async {
+    final updated = state.copyWithCategory(category, isEnabled);
+    await _repository.saveNotificationSettings(updated);
+    state = updated;
+  }
+
+  /// Triggers a test notification if master notifications are enabled.
   ///
-  /// If notifications are disabled or permission is missing, shows an explanation.
+  /// If notifications are disabled or permission is missing, shows user feedback.
   Future<void> sendTestNotification(BuildContext context) async {
-    if (!state) {
+    if (!state.enabled) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -88,9 +111,10 @@ class NotificationSettingsNotifier extends StateNotifier<bool> {
   }
 }
 
-/// Exposes whether notifications are enabled as reactive state.
+/// Exposes current [NotificationSettings] as reactive state.
 final notificationSettingsProvider =
-    StateNotifierProvider<NotificationSettingsNotifier, bool>((ref) {
+    StateNotifierProvider<NotificationSettingsNotifier, NotificationSettings>(
+        (ref) {
   final repository = ref.watch(appSettingsRepositoryProvider);
   return NotificationSettingsNotifier(repository: repository);
 });

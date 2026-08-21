@@ -1,6 +1,7 @@
 import 'package:hive_ce/hive.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/hive_boxes.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
 import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
 
@@ -35,6 +36,12 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists notification preference into local storage.
   Future<void> saveNotificationsEnabled(bool enabled);
+
+  /// Reads global notification preferences and category settings.
+  NotificationSettings getNotificationSettings();
+
+  /// Persists global notification preferences and category settings.
+  Future<void> saveNotificationSettings(NotificationSettings settings);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -56,6 +63,7 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _vehicleSortOptionKey = 'vehicle_sort_option';
   static const String _onboardingCompletedKey = 'onboarding_completed';
   static const String _notificationsEnabledKey = 'notifications_enabled';
+  static const String _notificationSettingsKey = 'notification_settings';
 
   @override
   AppThemeMode getThemeMode() {
@@ -139,21 +147,39 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   bool getNotificationsEnabled() {
-    final box = _settingsBox;
-    if (box != null) {
-      final val = box.get(_notificationsEnabledKey);
-      if (val is bool) {
-        return val;
-      }
-    }
-    return false;
+    return getNotificationSettings().enabled;
   }
 
   @override
   Future<void> saveNotificationsEnabled(bool enabled) async {
+    final current = getNotificationSettings();
+    await saveNotificationSettings(current.copyWith(enabled: enabled));
+  }
+
+  @override
+  NotificationSettings getNotificationSettings() {
+    final box = _settingsBox;
+    if (box == null) return const NotificationSettings();
+
+    final raw = box.get(_notificationSettingsKey);
+    if (raw is Map) {
+      return NotificationSettings.fromMap(raw);
+    }
+
+    final legacyEnabled = box.get(_notificationsEnabledKey);
+    if (legacyEnabled is bool) {
+      return NotificationSettings(enabled: legacyEnabled);
+    }
+
+    return const NotificationSettings();
+  }
+
+  @override
+  Future<void> saveNotificationSettings(NotificationSettings settings) async {
     final box = _settingsBox;
     if (box != null) {
-      await box.put(_notificationsEnabledKey, enabled);
+      await box.put(_notificationSettingsKey, settings.toMap());
+      await box.put(_notificationsEnabledKey, settings.enabled);
     }
   }
 }

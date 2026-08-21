@@ -1,5 +1,6 @@
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
+import 'package:odomex/features/settings/models/notification_settings.dart';
 import 'package:odomex/features/settings/models/vehicle_sort_option.dart';
 import 'package:odomex/features/vehicle_settings/models/global_vehicle_settings.dart';
 
@@ -49,4 +50,12 @@ class AppSettingsRepository {
   /// Persists notification preference.
   Future<void> saveNotificationsEnabled(bool enabled) =>
       localDataSource.saveNotificationsEnabled(enabled);
+
+  /// Returns global notification preferences and category settings.
+  NotificationSettings getNotificationSettings() =>
+      localDataSource.getNotificationSettings();
+
+  /// Persists global notification preferences and category settings.
+  Future<void> saveNotificationSettings(NotificationSettings settings) =>
+      localDataSource.saveNotificationSettings(settings);
 }
