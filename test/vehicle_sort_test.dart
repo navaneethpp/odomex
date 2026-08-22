@@ -81,10 +81,9 @@ class FakeVehicleLocalDataSource implements VehicleLocalDataSource {
   Future<void> updateVehicle(Vehicle vehicle) async => _vehicles[vehicle.id] = vehicle;
 
   @override
-  Future<void> deleteVehicle(String vehicleId) async => _vehicles.remove(vehicleId);
-
-  @override
-  Future<void> seedInitialVehicles(List<Vehicle> initialVehicles) async {}
+  Future<void> deleteVehicle(String vehicleId) async {
+    _vehicles.remove(vehicleId);
+  }
 }
 
 class FakeVehiclePreferencesLocalDataSource

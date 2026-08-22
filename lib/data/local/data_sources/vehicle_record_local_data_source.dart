@@ -34,9 +34,6 @@ abstract class VehicleRecordLocalDataSource {
 
   /// Deletes all records belonging to [vehicleId] (cascading delete).
   Future<void> deleteRecordsForVehicle(String vehicleId);
-
-  /// Seeds initial mock records on first launch only.
-  Future<void> seedInitialRecords(List<VehicleRecord> records);
 }
 
 /// Hive CE implementation of [VehicleRecordLocalDataSource].
@@ -47,13 +44,9 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
     Box<VehicleRecord>? recordBox,
     Box<dynamic>? settingsBox,
   })  : _recordBox =
-            recordBox ?? Hive.box<VehicleRecord>(HiveBoxes.vehicleRecords),
-        _settingsBox = settingsBox ?? Hive.box<dynamic>(HiveBoxes.appSettings);
+            recordBox ?? Hive.box<VehicleRecord>(HiveBoxes.vehicleRecords);
 
   final Box<VehicleRecord> _recordBox;
-  final Box<dynamic> _settingsBox;
-
-  static const String _isRecordsSeededKey = 'is_records_seeded';
 
   @override
   List<VehicleRecord> getAllRecords(String vehicleId) {
@@ -138,15 +131,5 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .toList();
 
     await _recordBox.deleteAll(keysToDelete);
-  }
-
-  @override
-  Future<void> seedInitialRecords(List<VehicleRecord> records) async {
-    final isSeeded = _settingsBox.get(_isRecordsSeededKey, defaultValue: false);
-    if (isSeeded == true) return;
-
-    final map = {for (final r in records) r.id: r};
-    await _recordBox.putAll(map);
-    await _settingsBox.put(_isRecordsSeededKey, true);
   }
 }

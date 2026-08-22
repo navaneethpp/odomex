@@ -100,38 +100,6 @@ void main() {
       expect(retrieved!.odometerReading, 5500);
       expect(retrieved.lastAccessedAt, accessTime);
     });
-
-    test('seedInitialVehicles seeds only once', () async {
-      final dataSource = HiveVehicleLocalDataSource(
-        vehicleBox: vehicleBox,
-        settingsBox: settingsBox,
-      );
-
-      final mockVehicles = [
-        Vehicle(
-          id: 'mock_1',
-          brand: VehicleBrand.hero,
-          model: 'Splendor',
-          manufacturingYear: 2020,
-          odometerReading: 10000,
-          registrationNumber: 'KL 10 BB 2222',
-          color: 'Blue',
-          fuelType: 'Petrol',
-          purchaseDate: DateTime(2020, 1, 1),
-        ),
-      ];
-
-      await dataSource.seedInitialVehicles(mockVehicles);
-      expect(dataSource.getVehicles().length, 1);
-
-      // Delete the vehicle
-      await dataSource.deleteVehicle('mock_1');
-      expect(dataSource.getVehicles().length, 0);
-
-      // Re-running seed should NOT recreate it because is_seeded is true
-      await dataSource.seedInitialVehicles(mockVehicles);
-      expect(dataSource.getVehicles().length, 0);
-    });
   });
 
   group('HiveVehicleRecordLocalDataSource & VehicleRecordsRepository Tests', () {

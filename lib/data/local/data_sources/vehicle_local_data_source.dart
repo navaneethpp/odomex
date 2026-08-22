@@ -21,9 +21,6 @@ abstract class VehicleLocalDataSource {
 
   /// Deletes a vehicle by its [vehicleId].
   Future<void> deleteVehicle(String vehicleId);
-
-  /// Seeds initial vehicles only if first-time seed hasn't been performed.
-  Future<void> seedInitialVehicles(List<Vehicle> initialVehicles);
 }
 
 /// Hive CE implementation of [VehicleLocalDataSource].
@@ -31,13 +28,9 @@ class HiveVehicleLocalDataSource implements VehicleLocalDataSource {
   HiveVehicleLocalDataSource({
     Box<Vehicle>? vehicleBox,
     Box<dynamic>? settingsBox,
-  })  : _vehicleBox = vehicleBox ?? Hive.box<Vehicle>(HiveBoxes.vehicles),
-        _settingsBox = settingsBox ?? Hive.box<dynamic>(HiveBoxes.appSettings);
+  })  : _vehicleBox = vehicleBox ?? Hive.box<Vehicle>(HiveBoxes.vehicles);
 
   final Box<Vehicle> _vehicleBox;
-  final Box<dynamic> _settingsBox;
-
-  static const String _keyIsSeeded = 'is_vehicles_seeded';
 
   @override
   List<Vehicle> getVehicles() {
@@ -62,15 +55,5 @@ class HiveVehicleLocalDataSource implements VehicleLocalDataSource {
   @override
   Future<void> deleteVehicle(String vehicleId) async {
     await _vehicleBox.delete(vehicleId);
-  }
-
-  @override
-  Future<void> seedInitialVehicles(List<Vehicle> initialVehicles) async {
-    final isSeeded = _settingsBox.get(_keyIsSeeded, defaultValue: false) as bool;
-    if (isSeeded) return;
-
-    final entries = {for (final v in initialVehicles) v.id: v};
-    await _vehicleBox.putAll(entries);
-    await _settingsBox.put(_keyIsSeeded, true);
   }
 }

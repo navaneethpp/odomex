@@ -89,9 +89,6 @@ class FakeVehicleLocalDataSource implements VehicleLocalDataSource {
 
   @override
   Future<void> deleteVehicle(String vehicleId) async => _vehicles.remove(vehicleId);
-
-  @override
-  Future<void> seedInitialVehicles(List<Vehicle> initialVehicles) async {}
 }
 
 class FakeVehiclePreferencesLocalDataSource
@@ -151,9 +148,6 @@ class FakeVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
   @override
   List<ServiceRecord> getServiceRecords(String vehicleId) =>
       _records.whereType<ServiceRecord>().where((r) => r.vehicleId == vehicleId).toList();
-
-  @override
-  Future<void> seedInitialRecords(List<VehicleRecord> records) async {}
 }
 
 class FakeVehicleSettingsLocalDataSource
