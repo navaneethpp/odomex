@@ -53,14 +53,16 @@ class AppRoutes {
         );
 
       case vehicleDashboard:
-        final vehicleId = settings.arguments as String;
+        final vehicleId =
+            settings.arguments is String ? settings.arguments as String : '';
         return buildVehicleTransitionRoute(
           builder: (_) => VehicleDashboardScreen(vehicleId: vehicleId),
           settings: settings,
         );
 
       case vehicleSettings:
-        final vehicleId = settings.arguments as String;
+        final vehicleId =
+            settings.arguments is String ? settings.arguments as String : '';
         return MaterialPageRoute(
           builder: (_) => VehicleSettingsScreen(vehicleId: vehicleId),
           settings: settings,
@@ -73,14 +75,16 @@ class AppRoutes {
         );
 
       case vehicleDetails:
-        final vehicleId = settings.arguments as String;
+        final vehicleId =
+            settings.arguments is String ? settings.arguments as String : '';
         return MaterialPageRoute(
           builder: (_) => VehicleDetailsScreen(vehicleId: vehicleId),
           settings: settings,
         );
 
       case vehicleRecords:
-        final vehicleId = settings.arguments as String;
+        final vehicleId =
+            settings.arguments is String ? settings.arguments as String : '';
         return MaterialPageRoute(
           builder: (_) => VehicleRecordsScreen(vehicleId: vehicleId),
           settings: settings,

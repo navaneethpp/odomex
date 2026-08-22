@@ -59,6 +59,7 @@ class VehicleHeaderCard extends StatelessWidget {
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
 
                   const SizedBox(height: AppSizes.spacingXs),

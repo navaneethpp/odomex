@@ -30,7 +30,7 @@ class DashboardHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           ),
           child: Icon(
-            Icons.two_wheeler_rounded,
+            vehicle.vehicleType.icon,
             color: colorScheme.onPrimaryContainer,
             size: AppSizes.iconLg,
           ),

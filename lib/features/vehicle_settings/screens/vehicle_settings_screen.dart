@@ -783,7 +783,7 @@ class _VehicleIdentityCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.two_wheeler_rounded,
+              vehicle.vehicleType.icon,
               color: colorScheme.onPrimaryContainer,
               size: AppSizes.iconMd,
             ),

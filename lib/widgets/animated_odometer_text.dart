@@ -114,28 +114,32 @@ class _AnimatedOdometerTextState extends State<AnimatedOdometerText>
 
         final formattedText = formatReading(currentReading);
 
-        if (widget.unit != null && widget.unit!.isNotEmpty) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
+        final content = (widget.unit != null && widget.unit!.isNotEmpty)
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    formattedText,
+                    style: widget.style,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.unit!,
+                    style: widget.unitStyle,
+                  ),
+                ],
+              )
+            : Text(
                 formattedText,
                 style: widget.style,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                widget.unit!,
-                style: widget.unitStyle,
-              ),
-            ],
-          );
-        }
+              );
 
-        return Text(
-          formattedText,
-          style: widget.style,
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: content,
         );
       },
     );

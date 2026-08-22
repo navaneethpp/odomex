@@ -190,7 +190,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.two_wheeler_rounded,
+                        vehicle.vehicleType.icon,
                         size: AppSizes.iconMd,
                         color: colorScheme.primary,
                       ),

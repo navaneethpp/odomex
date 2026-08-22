@@ -86,10 +86,13 @@ class VehicleCard extends StatelessWidget {
                             color: colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            '${vehicle.vehicleType.displayName} · ${vehicle.odometerReading.toStringAsFixed(0)} km',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                          Flexible(
+                            child: Text(
+                              '${vehicle.vehicleType.displayName} · ${vehicle.odometerReading.toStringAsFixed(0)} km',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
