@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
@@ -14,7 +15,8 @@ import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // 1. Initialize Hive
   await Hive.initFlutter();
@@ -43,6 +45,9 @@ Future<void> main() async {
   } catch (e, st) {
     debugPrint('Failed to initialize NotificationService: $e\n$st');
   }
+
+  // 5. Remove native splash once initialization is ready
+  FlutterNativeSplash.remove();
 
   runApp(
     const ProviderScope(

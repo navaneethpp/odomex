@@ -9,10 +9,12 @@ import 'package:odomex/features/vehicle_settings/screens/vehicle_settings_screen
 import 'package:odomex/screens/AddVehicleScreen/add_vehicle_screen.dart';
 import 'package:odomex/screens/HomeScreen/home_screen.dart';
 import 'package:odomex/screens/VehicleDetailsScreen/vehicle_details.dart';
+import 'package:odomex/screens/splash/splash_screen.dart';
 import 'package:odomex/screens/startup/app_startup_screen.dart';
 
 class AppRoutes {
   static const root = '/';
+  static const splash = '/splash';
   static const home = '/home';
   static const onboarding = '/onboarding';
   static const vehicleDashboard = '/vehicle-dashboard';
@@ -29,6 +31,12 @@ class AppRoutes {
       case root:
         return MaterialPageRoute(
           builder: (_) => const AppStartupScreen(),
+          settings: settings,
+        );
+
+      case splash:
+        return MaterialPageRoute(
+          builder: (_) => const SplashScreen(),
           settings: settings,
         );
 

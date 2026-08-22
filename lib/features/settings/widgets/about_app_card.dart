@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:odomex/core/constants/app_assets.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 
 /// Card displaying application identity, dynamic version, and core description.
@@ -51,23 +52,12 @@ class _AboutAppCardState extends State<AboutAppCard> {
         padding: const EdgeInsets.all(AppSizes.paddingLg),
         child: Column(
           children: [
-            // App Logo Badge
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.3),
-                  width: AppSizes.borderWidth,
-                ),
-              ),
-              child: Icon(
-                Icons.speed_rounded,
-                size: AppSizes.iconXl,
-                color: colorScheme.onPrimaryContainer,
-              ),
+            // Official App Logo
+            Image.asset(
+              AppAssets.logo,
+              width: 72,
+              height: 72,
+              fit: BoxFit.contain,
             ),
 
             const SizedBox(height: AppSizes.spacingMd),
