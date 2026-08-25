@@ -59,6 +59,12 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> setOnboardingCompleted(bool completed) async {}
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() => '1.0';
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {}
 }
 
 class FakeNotificationService implements NotificationService {

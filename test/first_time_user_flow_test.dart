@@ -63,6 +63,16 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> saveNotificationSettings(NotificationSettings settings) async {}
+
+  String? _privacyPolicyAcceptedVersion;
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() => _privacyPolicyAcceptedVersion;
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {
+    _privacyPolicyAcceptedVersion = version;
+  }
 }
 
 class FakeVehicleLocalDataSource implements VehicleLocalDataSource {
@@ -154,8 +164,12 @@ void main() {
 
       expect(find.text('Get Started'), findsOneWidget);
 
-      // 3. Tap Get Started -> Replaces route with AddVehicleScreen
+      // 3. Tap Get Started -> Replaces route with PrivacyConsentScreen -> AddVehicleScreen
       await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your Privacy Matters'), findsOneWidget);
+      await tester.tap(find.text('I Understand & Continue'));
       await tester.pumpAndSettle();
 
       expect(find.byType(AddVehicleScreen), findsOneWidget);
@@ -229,6 +243,7 @@ void main() {
         (tester) async {
       final fakeSettings = FakeAppSettingsLocalDataSource();
       fakeSettings._onboardingCompleted = true;
+      fakeSettings._privacyPolicyAcceptedVersion = '1.0';
       final fakeVehicleDataSource = FakeVehicleLocalDataSource();
       final fakePrefsDataSource = FakeVehiclePreferencesLocalDataSource();
 

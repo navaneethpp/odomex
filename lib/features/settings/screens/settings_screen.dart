@@ -6,6 +6,7 @@ import 'package:odomex/features/settings/widgets/developer_badge.dart';
 import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
 import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
 import 'package:odomex/features/settings/widgets/notification_test_card.dart';
+import 'package:odomex/features/settings/widgets/privacy_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/send_review_tile.dart';
 import 'package:odomex/features/settings/widgets/settings_section_title.dart';
 import 'package:odomex/features/settings/widgets/vehicle_defaults_setting_tile.dart';
@@ -45,7 +46,13 @@ class SettingsScreen extends StatelessWidget {
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 4. Appearance Preference ───────────────
+            // ── 4. Privacy & Data ─────────────────────
+            SettingsSectionTitle(title: 'PRIVACY'),
+            PrivacySettingTile(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 5. Appearance Preference ───────────────
             SettingsSectionTitle(title: 'APPEARANCE'),
             AppearanceSettingTile(),
 

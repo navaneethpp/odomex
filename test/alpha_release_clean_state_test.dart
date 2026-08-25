@@ -206,6 +206,16 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   Future<void> saveVehicleSortOption(VehicleSortOption option) async {
     _sortOption = option;
   }
+
+  String? _privacyPolicyAcceptedVersion;
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() => _privacyPolicyAcceptedVersion;
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {
+    _privacyPolicyAcceptedVersion = version;
+  }
 }
 
 class FakeVehiclePreferencesLocalDataSource
@@ -283,8 +293,12 @@ void main() {
       await tester.pumpWidget(createTestApp());
       await tester.pumpAndSettle();
 
-      // Tap Skip
+      // Tap Skip -> routes to Privacy Consent
       await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your Privacy Matters'), findsOneWidget);
+      await tester.tap(find.text('I Understand & Continue'));
       await tester.pumpAndSettle();
 
       // Home Screen with empty state
@@ -296,6 +310,7 @@ void main() {
 
     testWidgets('Subsequent app launch after onboarding opens Home screen directly without demo data', (tester) async {
       fakeAppSettingsDataSource.setOnboardingCompleted(true);
+      fakeAppSettingsDataSource.savePrivacyPolicyAcceptedVersion('1.0');
 
       await tester.pumpWidget(createTestApp());
       await tester.pumpAndSettle();

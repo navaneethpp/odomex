@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_durations.dart';
 import 'package:odomex/features/onboarding/screens/onboarding_screen.dart';
+import 'package:odomex/features/privacy/screens/privacy_consent_screen.dart';
 import 'package:odomex/features/settings/screens/settings_screen.dart';
 import 'package:odomex/features/vehicle_dashboard/screens/vehicle_dashboard_screen.dart';
 import 'package:odomex/features/vehicle_records/screens/vehicle_records_screen.dart';
@@ -24,6 +25,7 @@ class AppRoutes {
   static const globalVehicleSettings = '/global-vehicle-settings';
   static const addVehicle = '/add-vehicle';
   static const settings = '/settings';
+  static const privacyConsent = '/privacy-consent';
 
   /// Generates routes with custom, subtle transition animations.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -49,6 +51,24 @@ class AppRoutes {
       case onboarding:
         return MaterialPageRoute(
           builder: (_) => const OnboardingScreen(),
+          settings: settings,
+        );
+
+      case privacyConsent:
+        final args = settings.arguments;
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => PrivacyConsentScreen(
+              isFirstLaunch: args['isFirstLaunch'] as bool? ?? false,
+              isPolicyUpdate: args['isPolicyUpdate'] as bool? ?? false,
+              isViewOnly: args['isViewOnly'] as bool? ?? false,
+              targetRoute: args['targetRoute'] as String?,
+            ),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => const PrivacyConsentScreen(),
           settings: settings,
         );
 

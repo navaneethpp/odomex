@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:odomex/core/constants/app_constants.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Compact attribution badge crediting HexaKode with an optional website launcher.
 class DeveloperBadge extends StatelessWidget {
   const DeveloperBadge({super.key});
 
-  static const String _websiteUrl = 'https://hexakode.in';
-
   Future<void> _launchWebsite(BuildContext context) async {
-    final uri = Uri.parse(_websiteUrl);
+    final uri = Uri.parse(AppConstants.developerWebsiteUrl);
     try {
       final launched = await launchUrl(
         uri,
@@ -18,7 +17,8 @@ class DeveloperBadge extends StatelessWidget {
       if (!launched && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not open $_websiteUrl'),
+            content: Text(
+                'Could not open ${AppConstants.developerWebsiteUrl}'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -27,7 +27,8 @@ class DeveloperBadge extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not open $_websiteUrl'),
+            content: Text(
+                'Could not open ${AppConstants.developerWebsiteUrl}'),
             behavior: SnackBarBehavior.floating,
           ),
         );

@@ -6,6 +6,7 @@ import 'package:odomex/features/onboarding/data/onboarding_story_pages.dart';
 import 'package:odomex/features/onboarding/providers/onboarding_provider.dart';
 import 'package:odomex/features/onboarding/widgets/onboarding_page.dart';
 import 'package:odomex/features/onboarding/widgets/onboarding_page_indicator.dart';
+import 'package:odomex/features/privacy/providers/privacy_consent_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 
 /// The 5-step story-driven first-time onboarding screen for Odomex.
@@ -33,9 +34,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _handleSkip() async {
-    await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    final isConsentAccepted = ref.read(isPrivacyConsentAcceptedProvider);
+    if (!isConsentAccepted) {
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.privacyConsent,
+          arguments: {
+            'isFirstLaunch': true,
+            'targetRoute': AppRoutes.home,
+          },
+        );
+      }
+    } else {
+      await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
     }
   }
 
@@ -52,9 +67,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       }
     } else {
       // Final CTA: "Get Started"
-      await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.addVehicle);
+      final isConsentAccepted = ref.read(isPrivacyConsentAcceptedProvider);
+      if (!isConsentAccepted) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.privacyConsent,
+            arguments: {
+              'isFirstLaunch': true,
+              'targetRoute': AppRoutes.addVehicle,
+            },
+          );
+        }
+      } else {
+        await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.addVehicle);
+        }
       }
     }
   }

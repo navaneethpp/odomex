@@ -58,4 +58,12 @@ class AppSettingsRepository {
   /// Persists global notification preferences and category settings.
   Future<void> saveNotificationSettings(NotificationSettings settings) =>
       localDataSource.saveNotificationSettings(settings);
+
+  /// Returns the accepted Privacy Policy version, or null if not yet accepted.
+  String? getPrivacyPolicyAcceptedVersion() =>
+      localDataSource.getPrivacyPolicyAcceptedVersion();
+
+  /// Persists the accepted Privacy Policy version string.
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) =>
+      localDataSource.savePrivacyPolicyAcceptedVersion(version);
 }

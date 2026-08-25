@@ -130,6 +130,16 @@ class _FakeAppSettingsDataSource implements AppSettingsLocalDataSource {
   Future<void> saveVehicleSortOption(VehicleSortOption option) async {
     _sortOption = option;
   }
+
+  String? _privacyPolicyAcceptedVersion = '1.0';
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() => _privacyPolicyAcceptedVersion;
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {
+    _privacyPolicyAcceptedVersion = version;
+  }
 }
 
 void main() {

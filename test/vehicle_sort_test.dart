@@ -63,6 +63,12 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> saveNotificationSettings(NotificationSettings settings) async {}
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() => '1.0';
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {}
 }
 
 class FakeVehicleLocalDataSource implements VehicleLocalDataSource {

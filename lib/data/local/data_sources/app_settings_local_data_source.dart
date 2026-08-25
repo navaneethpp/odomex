@@ -42,6 +42,12 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists global notification preferences and category settings.
   Future<void> saveNotificationSettings(NotificationSettings settings);
+
+  /// Returns the accepted Privacy Policy version, or null if not yet accepted.
+  String? getPrivacyPolicyAcceptedVersion();
+
+  /// Persists the accepted Privacy Policy version string.
+  Future<void> savePrivacyPolicyAcceptedVersion(String version);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -64,6 +70,8 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _onboardingCompletedKey = 'onboarding_completed';
   static const String _notificationsEnabledKey = 'notifications_enabled';
   static const String _notificationSettingsKey = 'notification_settings';
+  static const String _privacyPolicyAcceptedVersionKey =
+      'privacy_policy_accepted_version';
 
   @override
   AppThemeMode getThemeMode() {
@@ -180,6 +188,26 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
     if (box != null) {
       await box.put(_notificationSettingsKey, settings.toMap());
       await box.put(_notificationsEnabledKey, settings.enabled);
+    }
+  }
+
+  @override
+  String? getPrivacyPolicyAcceptedVersion() {
+    final box = _settingsBox;
+    if (box != null) {
+      final val = box.get(_privacyPolicyAcceptedVersionKey);
+      if (val is String && val.trim().isNotEmpty) {
+        return val.trim();
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> savePrivacyPolicyAcceptedVersion(String version) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_privacyPolicyAcceptedVersionKey, version.trim());
     }
   }
 }
