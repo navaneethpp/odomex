@@ -57,6 +57,39 @@ class VehicleRecordsRepository {
     return records.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
   }
 
+  /// Returns the latest known odometer reading for [vehicleId] across all saved records
+  /// and optional [vehicleCurrentOdometer] baseline.
+  double? getLatestOdometerReading(
+    String vehicleId, {
+    double? vehicleCurrentOdometer,
+  }) {
+    double? latest =
+        (vehicleCurrentOdometer != null && vehicleCurrentOdometer > 0)
+            ? vehicleCurrentOdometer
+            : null;
+
+    final records = localDataSource.getAllRecords(vehicleId);
+    for (final r in records) {
+      double? odo;
+      switch (r) {
+        case OdometerRecord():
+          odo = r.odometer;
+        case FuelRecord():
+          odo = r.odometerReading;
+        case ServiceRecord():
+          odo = r.odometerReading;
+        case OilChangeRecord():
+          odo = r.odometerReading;
+      }
+      if (odo != null && odo > 0) {
+        if (latest == null || odo > latest) {
+          latest = odo;
+        }
+      }
+    }
+    return latest;
+  }
+
   /// Deletes all records for [vehicleId] (used during cascading vehicle deletion).
   Future<void> deleteRecordsForVehicle(String vehicleId) {
     return localDataSource.deleteRecordsForVehicle(vehicleId);

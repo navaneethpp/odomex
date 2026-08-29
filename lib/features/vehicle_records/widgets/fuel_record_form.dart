@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:odomex/core/constants/app_constants.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_records/utils/fuel_cost_calculator.dart';
 import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.dart';
+import 'package:odomex/features/vehicle_records/widgets/smart_odometer_input_field.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
-/// Form for logging a fuel refill with comprehensive validation.
+/// Form for logging a fuel refill with smart automatic total cost calculation
+/// and smart odometer autofill.
 ///
 /// Fields:
 ///   - Fuel quantity (L, required, > 0)
-///   - Total cost (₹, required, >= 0)
-///   - Odometer reading (required, >= 0, >= current vehicle odometer)
+///   - Price per litre (₹/L, required, > 0)
+///   - Total cost (₹, automatically calculated as quantity × price per litre)
+///   - Odometer reading (required, with "Use Latest" shortcut)
 ///   - Date (required, no future dates)
 ///   - Fuel station (optional, max 100 chars)
 ///   - Notes (optional, max 500 chars)
@@ -33,31 +38,68 @@ class FuelRecordForm extends StatefulWidget {
 class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   final _formKey = GlobalKey<FormState>();
   final _quantityController = TextEditingController();
-  final _costController = TextEditingController();
+  final _priceController = TextEditingController();
   final _odometerController = TextEditingController();
   DateTime? _date = DateTime.now();
   final _stationController = TextEditingController();
   final _notesController = TextEditingController();
 
+  double? _calculatedTotalCost;
+
+  @override
+  void initState() {
+    super.initState();
+    _quantityController.addListener(_onCostInputsChanged);
+    _priceController.addListener(_onCostInputsChanged);
+  }
+
   @override
   void dispose() {
+    _quantityController.removeListener(_onCostInputsChanged);
+    _priceController.removeListener(_onCostInputsChanged);
     _quantityController.dispose();
-    _costController.dispose();
+    _priceController.dispose();
     _odometerController.dispose();
     _stationController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
+  void _onCostInputsChanged() {
+    final qty = double.tryParse(_quantityController.text.trim());
+    final price = double.tryParse(_priceController.text.trim());
+
+    final total = FuelCostCalculator.calculateTotalCost(
+      quantity: qty,
+      pricePerUnit: price,
+    );
+
+    if (total != _calculatedTotalCost) {
+      setState(() {
+        _calculatedTotalCost = total;
+      });
+    }
+  }
+
   @override
   FuelRecord? buildRecord() {
     if (!_formKey.currentState!.validate()) return null;
+
+    final quantity = double.parse(_quantityController.text.trim());
+    final price = double.parse(_priceController.text.trim());
+    final totalCost = FuelCostCalculator.calculateTotalCost(
+      quantity: quantity,
+      pricePerUnit: price,
+    );
+
+    if (totalCost == null) return null;
+
     final odometerText = _odometerController.text.trim();
     return FuelRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
-      quantity: double.parse(_quantityController.text.trim()),
-      cost: double.parse(_costController.text.trim()),
+      quantity: quantity,
+      cost: totalCost,
       odometerReading: odometerText.isNotEmpty
           ? double.tryParse(odometerText)
           : null,
@@ -72,17 +114,23 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final odoHint = widget.currentOdometer != null
         ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
         : 'e.g. 25100';
+
+    final hasCalculatedCost = _calculatedTotalCost != null;
 
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Quantity + Cost (side by side) ──
+          // ── Fuel Quantity & Price per Litre (side by side) ──
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextFormField(
@@ -96,7 +144,7 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                   decoration: const InputDecoration(
                     labelText: 'Fuel Quantity *',
                     suffixText: 'L',
-                    hintText: 'e.g. 5.2',
+                    hintText: 'e.g. 5.5',
                   ),
                   validator: validateFuelQuantity,
                 ),
@@ -106,18 +154,19 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
               Expanded(
                 child: TextFormField(
-                  controller: _costController,
+                  controller: _priceController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'Fuel Cost *',
-                    prefixText: '₹ ',
-                    hintText: 'e.g. 550',
+                    labelText: 'Price per Litre *',
+                    prefixText: '${AppConstants.currencySymbol} ',
+                    suffixText: '/L',
+                    hintText: 'e.g. 105.50',
                   ),
-                  validator: validateFuelCost,
+                  validator: validateFuelPrice,
                 ),
               ),
             ],
@@ -125,19 +174,88 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
           const SizedBox(height: AppSizes.spacingMd),
 
-          // ── Odometer (required) ──
-          TextFormField(
-            controller: _odometerController,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Odometer Reading *',
-              suffixText: 'km',
-              hintText: odoHint,
+          // ── Live Total Cost Display Card ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSizes.paddingMd),
+            decoration: BoxDecoration(
+              color: hasCalculatedCost
+                  ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              border: Border.all(
+                color: hasCalculatedCost
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
             ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: hasCalculatedCost
+                        ? colorScheme.primaryContainer
+                        : colorScheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.payments_outlined,
+                    size: AppSizes.iconMd,
+                    color: hasCalculatedCost
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: AppSizes.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Fuel Cost',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        FuelCostCalculator.formatCost(_calculatedTotalCost),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: hasCalculatedCost
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (hasCalculatedCost) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_quantityController.text.trim()} L × ${AppConstants.currencySymbol}${_priceController.text.trim()}/L',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSizes.spacingMd),
+
+          // ── Odometer (with Smart "Use Latest" shortcut) ──
+          SmartOdometerInputField(
+            controller: _odometerController,
+            vehicleId: widget.vehicleId,
+            currentOdometer: widget.currentOdometer,
+            hintText: odoHint,
+            required: true,
             validator: (v) => validateRecordOdometer(
               v,
               currentVehicleOdometer: widget.currentOdometer,

@@ -17,4 +17,7 @@ class AppConstants {
 
   /// Official developer contact email for reviews and feedback.
   static const String contactEmail = 'contact@hexakode.in';
+
+  /// Default currency symbol used across the application.
+  static const String currencySymbol = '₹';
 }

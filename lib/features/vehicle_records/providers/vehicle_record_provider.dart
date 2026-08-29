@@ -102,6 +102,15 @@ class VehicleRecordNotifier extends StateNotifier<VehicleRecordState> {
 
   OdometerRecord? getLatestOdometerRecord(String vehicleId) =>
       _repository.getLatestOdometerRecord(vehicleId);
+
+  double? getLatestOdometerReading(
+    String vehicleId, {
+    double? vehicleCurrentOdometer,
+  }) =>
+      _repository.getLatestOdometerReading(
+        vehicleId,
+        vehicleCurrentOdometer: vehicleCurrentOdometer,
+      );
 }
 
 // ─────────────────────────────────────────────
@@ -124,6 +133,37 @@ final recordsByVehicleProvider =
   }
   final repository = ref.watch(vehicleRecordRepositoryProvider);
   return repository.getAllRecords(vehicleId);
+});
+
+/// Reactively provides the latest saved odometer reading for a specific vehicle.
+final latestOdometerReadingProvider =
+    Provider.family<double?, String>((ref, vehicleId) {
+  final vehicle = ref.watch(vehicleByIdProvider(vehicleId));
+  final records = ref.watch(recordsByVehicleProvider(vehicleId));
+
+  double? latest = (vehicle != null && vehicle.odometerReading > 0)
+      ? vehicle.odometerReading
+      : null;
+
+  for (final r in records) {
+    double? odo;
+    switch (r) {
+      case OdometerRecord():
+        odo = r.odometer;
+      case FuelRecord():
+        odo = r.odometerReading;
+      case ServiceRecord():
+        odo = r.odometerReading;
+      case OilChangeRecord():
+        odo = r.odometerReading;
+    }
+    if (odo != null && odo > 0) {
+      if (latest == null || odo > latest) {
+        latest = odo;
+      }
+    }
+  }
+  return latest;
 });
 
 /// Reactively provides the last 10 records for a specific vehicle.

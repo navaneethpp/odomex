@@ -140,6 +140,14 @@ String? validateFuelQuantity(String? value) {
   return validatePositiveNumber(value, 'Fuel quantity');
 }
 
+/// Validates fuel price per unit/litre in INR (> 0).
+String? validateFuelPrice(String? value, {bool required = true}) {
+  if (value == null || value.trim().isEmpty) {
+    return required ? 'Price per litre is required.' : null;
+  }
+  return validatePositiveNumber(value, 'Price per litre');
+}
+
 /// Validates fuel cost in INR (>= 0).
 String? validateFuelCost(String? value) {
   return validateNonNegativeNumber(value, 'Fuel cost', required: true);

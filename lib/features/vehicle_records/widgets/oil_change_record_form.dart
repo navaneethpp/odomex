@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.dart';
+import 'package:odomex/features/vehicle_records/widgets/smart_odometer_input_field.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
@@ -96,19 +97,14 @@ class _OilChangeRecordFormState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Odometer ──
-          TextFormField(
+          // ── Odometer (with Smart "Use Latest" shortcut) ──
+          SmartOdometerInputField(
             controller: _odometerController,
+            vehicleId: widget.vehicleId,
+            currentOdometer: widget.currentOdometer,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Odometer Reading *',
-              suffixText: 'km',
-              hintText: odoHint,
-            ),
+            hintText: odoHint,
+            required: true,
             validator: (v) => validateRecordOdometer(
               v,
               currentVehicleOdometer: widget.currentOdometer,
