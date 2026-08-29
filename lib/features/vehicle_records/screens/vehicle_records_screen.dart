@@ -6,10 +6,11 @@ import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record_type.dart';
 import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
 import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
+import 'package:odomex/features/vehicle_records/widgets/vehicle_cost_summary_card.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
-/// Screen displaying the complete history of vehicle records with type filters.
+/// Screen displaying the complete history of vehicle records with type filters and cost analysis.
 class VehicleRecordsScreen extends ConsumerStatefulWidget {
   const VehicleRecordsScreen({
     super.key,
@@ -61,6 +62,11 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Cost Summary / Analysis Section ──
+          VehicleCostSummaryCard(vehicleId: widget.vehicleId),
+
+          const SizedBox(height: AppSizes.spacingMd),
+
           // ── Filter Chips ──
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
