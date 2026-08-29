@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/widgets/animated_number_text.dart';
 
 /// Reusable metric card displaying a single period-based usage value (Distance, Fuel, or Cost).
+///
+/// Supports smooth, synchronized count-up animation when [numericValue] is provided.
 class PeriodMetricCard extends StatelessWidget {
   const PeriodMetricCard({
     super.key,
     required this.title,
-    required this.value,
+    this.value,
+    this.numericValue,
+    this.prefix,
     this.unit,
+    this.decimalDigits,
     required this.icon,
     this.accentColor,
     this.subtitle,
-  });
+  }) : assert(value != null || numericValue != null,
+            'Either value or numericValue must be provided');
 
   final String title;
-  final String value;
+  final String? value;
+  final num? numericValue;
+  final String? prefix;
   final String? unit;
+  final int? decimalDigits;
   final IconData icon;
   final Color? accentColor;
   final String? subtitle;
@@ -82,34 +92,56 @@ class PeriodMetricCard extends StatelessWidget {
             const SizedBox(height: AppSizes.spacingSm),
 
             // Value + Unit
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Flexible(
-                  child: Text(
-                    value,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+            if (numericValue != null)
+              AnimatedNumberText(
+                value: numericValue!,
+                prefix: prefix,
+                unit: unit,
+                decimalDigits: decimalDigits,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.5,
                 ),
-                if (unit != null && unit!.isNotEmpty) ...[
-                  const SizedBox(width: 3),
-                  Text(
-                    unit!,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: accent,
+                prefixStyle: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.5,
+                ),
+                unitStyle: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value!,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: colorScheme.onSurface,
+                        letterSpacing: -0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (unit != null && unit!.isNotEmpty) ...[
+                    const SizedBox(width: 3),
+                    Text(
+                      unit!,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: accent,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
+              ),
 
             if (subtitle != null && subtitle!.isNotEmpty) ...[
               const SizedBox(height: 2),

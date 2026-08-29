@@ -20,9 +20,10 @@ void main() {
   );
 
   group('Odometer Duration Constants Tests', () {
-    test('AppDurations.odometerCountUp is set to 1800ms', () {
-      expect(AppDurations.odometerCountUp, const Duration(milliseconds: 1800));
-      expect(AppDurations.odometer, const Duration(milliseconds: 1800));
+    test('AppDurations.odometerCountUp is set to 1500ms', () {
+      expect(AppDurations.odometerCountUp, const Duration(milliseconds: 1500));
+      expect(AppDurations.counterAnimation, const Duration(milliseconds: 1500));
+      expect(AppDurations.odometer, const Duration(milliseconds: 1500));
     });
   });
 

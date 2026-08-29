@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_dashboard/models/period_usage_summary.dart';
 import 'package:odomex/features/vehicle_dashboard/utils/daily_travel_calculator.dart';
@@ -36,13 +35,6 @@ class UsageOverviewSection extends StatefulWidget {
 
 class _UsageOverviewSectionState extends State<UsageOverviewSection> {
   _ChartTab _activeTab = _ChartTab.distance;
-
-  static final _numberFormat = NumberFormat('#,##0.#');
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 0,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +73,9 @@ class _UsageOverviewSectionState extends State<UsageOverviewSection> {
                     Expanded(
                       child: PeriodMetricCard(
                         title: 'Distance',
-                        value: _numberFormat.format(summary.totalDistanceKm),
+                        numericValue: summary.totalDistanceKm,
+                        decimalDigits:
+                            summary.totalDistanceKm % 1 == 0 ? 0 : 1,
                         unit: 'km',
                         icon: Icons.route_rounded,
                         accentColor: colorScheme.primary,
@@ -91,7 +85,8 @@ class _UsageOverviewSectionState extends State<UsageOverviewSection> {
                     Expanded(
                       child: PeriodMetricCard(
                         title: 'Fuel',
-                        value: summary.totalFuelLitres.toStringAsFixed(1),
+                        numericValue: summary.totalFuelLitres,
+                        decimalDigits: 1,
                         unit: 'L',
                         icon: Icons.local_gas_station_rounded,
                         accentColor: Colors.amber.shade700,
@@ -101,7 +96,9 @@ class _UsageOverviewSectionState extends State<UsageOverviewSection> {
                     Expanded(
                       child: PeriodMetricCard(
                         title: 'Cost',
-                        value: _currencyFormat.format(summary.totalCost),
+                        numericValue: summary.totalCost,
+                        prefix: '₹',
+                        decimalDigits: 0,
                         icon: Icons.payments_rounded,
                         accentColor: Colors.teal.shade700,
                       ),

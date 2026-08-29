@@ -13,11 +13,17 @@ class AppDurations {
   /// Slow / emphasized duration (450ms).
   static const Duration slow = Duration(milliseconds: 450);
 
-  /// Smooth, readable odometer reading count-up animation duration (1800ms).
-  static const Duration odometerCountUp = Duration(milliseconds: 1800);
+  /// Smooth, readable numeric count-up animation duration (1500ms).
+  static const Duration counterAnimation = Duration(milliseconds: 1500);
+
+  /// Smooth, readable odometer reading count-up animation duration (1500ms).
+  static const Duration odometerCountUp = counterAnimation;
 
   /// Alias for odometer animation duration.
   static const Duration odometer = odometerCountUp;
+
+  /// Smooth ease-out cubic curve for numerical counter animations.
+  static const Curve counterCurve = Curves.easeOutCubic;
 
   /// Natural ease-out curve for entering screen transitions and odometer count-up.
   static const Curve defaultCurve = Curves.easeOutCubic;
