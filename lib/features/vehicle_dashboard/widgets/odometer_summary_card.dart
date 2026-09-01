@@ -9,9 +9,11 @@ class OdometerSummaryCard extends StatelessWidget {
   const OdometerSummaryCard({
     super.key,
     required this.vehicle,
+    this.odometerReading,
   });
 
   final Vehicle vehicle;
+  final double? odometerReading;
 
   static final _dateFormat = DateFormat('d MMM yyyy');
 
@@ -35,6 +37,7 @@ class OdometerSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final displayOdometer = odometerReading ?? vehicle.odometerReading;
 
     return Card(
       elevation: AppSizes.elevationSm,
@@ -74,7 +77,7 @@ class OdometerSummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSizes.spacingSm),
                   AnimatedOdometerText(
-                    value: vehicle.odometerReading,
+                    value: displayOdometer,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: colorScheme.onSurface,

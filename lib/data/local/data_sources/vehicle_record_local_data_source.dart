@@ -32,6 +32,9 @@ abstract class VehicleRecordLocalDataSource {
   /// Persists [record] into local storage.
   Future<void> addRecord(VehicleRecord record);
 
+  /// Deletes a specific record by [recordId] belonging to [vehicleId].
+  Future<void> deleteRecord(String vehicleId, String recordId);
+
   /// Deletes all records belonging to [vehicleId] (cascading delete).
   Future<void> deleteRecordsForVehicle(String vehicleId);
 }
@@ -121,6 +124,14 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
   @override
   Future<void> addRecord(VehicleRecord record) async {
     await _recordBox.put(record.id, record);
+  }
+
+  @override
+  Future<void> deleteRecord(String vehicleId, String recordId) async {
+    final record = _recordBox.get(recordId);
+    if (record != null && record.vehicleId == vehicleId) {
+      await _recordBox.delete(recordId);
+    }
   }
 
   @override

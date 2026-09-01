@@ -68,6 +68,11 @@ class FakeCostRecordDataSource implements VehicleRecordLocalDataSource {
   Future<void> saveRecord(VehicleRecord record) => addRecord(record);
 
   @override
+  Future<void> deleteRecord(String vehicleId, String recordId) async {
+    _records[vehicleId]?.removeWhere((r) => r.id == recordId);
+  }
+
+  @override
   Future<void> deleteRecordsForVehicle(String vehicleId) async {
     _records.remove(vehicleId);
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
-import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record_type.dart';
 import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
 import 'package:odomex/features/vehicle_records/widgets/fuel_record_form.dart';
@@ -75,75 +74,41 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
     }
   }
 
-  Future<void> _save() {
-    if (_isSaving) return Future.value();
+  Future<void> _save() async {
+    if (_isSaving) return;
 
     final record = _activeFormKey.currentState?.buildRecord();
-    if (record == null) return Future.value(); // Form validation failed
+    if (record == null) return; // Form validation failed
 
     setState(() => _isSaving = true);
 
-    // 1. Add record to vehicle record state
-    ref.read(vehicleRecordProvider.notifier).addRecord(record);
+    try {
+      // 1. Add record to repository and synchronize all derived vehicle state
+      await ref.read(vehicleRecordProvider.notifier).addRecord(record);
 
-    // 2. Update vehicle derived state (e.g. current odometer reading, last service/oil dates)
-    final vehicle = ref.read(vehicleByIdProvider(widget.vehicleId));
-    if (vehicle != null) {
-      double? newOdometer;
+      if (!mounted) return;
 
-      switch (record) {
-        case OdometerRecord():
-          if (record.odometer > vehicle.odometerReading) {
-            newOdometer = record.odometer;
-          }
-        case FuelRecord():
-          if (record.odometerReading != null &&
-              record.odometerReading! > vehicle.odometerReading) {
-            newOdometer = record.odometerReading;
-          }
-        case ServiceRecord():
-          if (record.odometerReading != null &&
-              record.odometerReading! > vehicle.odometerReading) {
-            newOdometer = record.odometerReading;
-          }
-        case OilChangeRecord():
-          if (record.odometerReading > vehicle.odometerReading) {
-            newOdometer = record.odometerReading;
-          }
-      }
+      // 2. Close sheet
+      Navigator.pop(context);
 
-      var updatedVehicle = vehicle;
-      if (newOdometer != null) {
-        updatedVehicle = updatedVehicle.copyWith(odometerReading: newOdometer);
-      }
-      if (record is OilChangeRecord) {
-        updatedVehicle = updatedVehicle.copyWith(
-          lastOilChangeDate: record.date,
-          lastOilChangeOdometer: record.odometerReading,
-        );
-      } else if (record is ServiceRecord) {
-        updatedVehicle = updatedVehicle.copyWith(
-          lastServiceDate: record.date,
-        );
-      }
-
-      if (updatedVehicle != vehicle) {
-        ref.read(vehicleProvider.notifier).updateVehicle(updatedVehicle);
-      }
+      // 3. Feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_selectedType.title} added successfully'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save record: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
-
-    // 3. Close sheet
-    Navigator.pop(context);
-
-    // 4. Feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_selectedType.title} added successfully'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    return Future.value();
   }
 
   @override

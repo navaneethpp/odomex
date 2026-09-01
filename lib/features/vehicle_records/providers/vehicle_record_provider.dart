@@ -47,28 +47,83 @@ class VehicleRecordNotifier extends StateNotifier<VehicleRecordState> {
   }
 
   /// Adds [record] to the repository and updates reactive state.
-  /// Also synchronizes the vehicle's current odometer if this record has a higher reading.
+  /// Synchronizes the vehicle's derived fields (odometer, service date, oil change).
   Future<void> addRecord(VehicleRecord record) async {
     await _repository.addRecord(record);
     state = _stateAfterAdd(record.vehicleId);
+    await _syncVehicleDerivedState(record.vehicleId);
+  }
 
-    // Extract odometer if present
-    double? odo;
-    switch (record) {
-      case OdometerRecord():
-        odo = record.odometer;
-      case FuelRecord():
-        odo = record.odometerReading;
-      case ServiceRecord():
-        odo = record.odometerReading;
-      case OilChangeRecord():
-        odo = record.odometerReading;
+  /// Updates an existing [record] in the repository and updates reactive state.
+  Future<void> updateRecord(VehicleRecord record) async {
+    await _repository.updateRecord(record);
+    state = _stateAfterAdd(record.vehicleId);
+    await _syncVehicleDerivedState(record.vehicleId);
+  }
+
+  /// Deletes a specific [recordId] belonging to [vehicleId] and updates reactive state.
+  Future<void> deleteRecord(String vehicleId, String recordId) async {
+    await _repository.deleteRecord(vehicleId, recordId);
+    state = _stateAfterAdd(vehicleId);
+    await _syncVehicleDerivedState(vehicleId);
+  }
+
+  /// Synchronizes dynamic properties on the vehicle entity when records change.
+  Future<void> _syncVehicleDerivedState(String vehicleId) async {
+    final vehicle = _ref.read(vehicleByIdProvider(vehicleId));
+    if (vehicle == null) return;
+
+    final records = _repository.getAllRecords(vehicleId);
+
+    // 1. Calculate latest odometer reading
+    double? latestOdometer;
+    for (final r in records) {
+      double? odo;
+      switch (r) {
+        case OdometerRecord():
+          odo = r.odometer;
+        case FuelRecord():
+          odo = r.odometerReading;
+        case ServiceRecord():
+          odo = r.odometerReading;
+        case OilChangeRecord():
+          odo = r.odometerReading;
+      }
+      if (odo != null && odo > 0) {
+        if (latestOdometer == null || odo > latestOdometer) {
+          latestOdometer = odo;
+        }
+      }
     }
 
-    if (odo != null && odo > 0) {
-      await _ref
-          .read(vehicleProvider.notifier)
-          .updateOdometerIfHigher(record.vehicleId, odo);
+    // 2. Calculate latest service date
+    final serviceRecords = records.whereType<ServiceRecord>().toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final latestServiceDate =
+        serviceRecords.isNotEmpty ? serviceRecords.first.date : null;
+
+    // 3. Calculate latest oil change date & odometer
+    final oilRecords = records.whereType<OilChangeRecord>().toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final latestOilRecord = oilRecords.isNotEmpty ? oilRecords.first : null;
+
+    var updated = vehicle;
+    if (latestOdometer != null && latestOdometer != vehicle.odometerReading) {
+      updated = updated.copyWith(odometerReading: latestOdometer);
+    }
+    if (latestServiceDate != null &&
+        latestServiceDate != vehicle.lastServiceDate) {
+      updated = updated.copyWith(lastServiceDate: latestServiceDate);
+    }
+    if (latestOilRecord != null) {
+      updated = updated.copyWith(
+        lastOilChangeDate: latestOilRecord.date,
+        lastOilChangeOdometer: latestOilRecord.odometerReading,
+      );
+    }
+
+    if (updated != vehicle) {
+      await _ref.read(vehicleProvider.notifier).updateVehicle(updated);
     }
   }
 
@@ -141,9 +196,7 @@ final latestOdometerReadingProvider =
   final vehicle = ref.watch(vehicleByIdProvider(vehicleId));
   final records = ref.watch(recordsByVehicleProvider(vehicleId));
 
-  double? latest = (vehicle != null && vehicle.odometerReading > 0)
-      ? vehicle.odometerReading
-      : null;
+  double? latestFromRecords;
 
   for (final r in records) {
     double? odo;
@@ -158,12 +211,16 @@ final latestOdometerReadingProvider =
         odo = r.odometerReading;
     }
     if (odo != null && odo > 0) {
-      if (latest == null || odo > latest) {
-        latest = odo;
+      if (latestFromRecords == null || odo > latestFromRecords) {
+        latestFromRecords = odo;
       }
     }
   }
-  return latest;
+
+  return latestFromRecords ??
+      ((vehicle != null && vehicle.odometerReading > 0)
+          ? vehicle.odometerReading
+          : null);
 });
 
 /// Reactively provides the last 10 records for a specific vehicle.

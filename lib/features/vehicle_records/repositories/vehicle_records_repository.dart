@@ -18,6 +18,16 @@ class VehicleRecordsRepository {
     return localDataSource.addRecord(record);
   }
 
+  /// Updates an existing [record] in the local store.
+  Future<void> updateRecord(VehicleRecord record) {
+    return localDataSource.addRecord(record);
+  }
+
+  /// Deletes a specific [recordId] belonging to [vehicleId].
+  Future<void> deleteRecord(String vehicleId, String recordId) {
+    return localDataSource.deleteRecord(vehicleId, recordId);
+  }
+
   /// Returns all records for [vehicleId] sorted by date descending.
   List<VehicleRecord> getAllRecords(String vehicleId) =>
       localDataSource.getAllRecords(vehicleId);

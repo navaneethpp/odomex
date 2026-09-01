@@ -60,18 +60,80 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
 void main() {
   group('FeedbackService Unit Tests', () {
-    test('generates canonical mailto URI with encoded subject and body', () {
+    test('generates canonical mailto URI with RFC 6068 percent-encoding (no + signs)', () {
       final uri = FeedbackService.feedbackMailtoUri;
 
       expect(uri.scheme, 'mailto');
       expect(uri.path, 'contact@hexakode.in');
-      expect(uri.queryParameters['subject'], 'Odomex Feedback');
+      expect(FeedbackService.feedbackEmail, 'contact@hexakode.in');
+      expect(FeedbackService.feedbackSubject, 'Odomex Feedback');
+
+      final uriString = uri.toString();
+
+      // Subject must be percent-encoded with %20, NEVER '+'
+      expect(uriString, contains('subject=Odomex%20Feedback'));
+      expect(uriString, isNot(contains('subject=Odomex+Feedback')));
+
+      // Body must be percent-encoded with %20 and %0A, NEVER '+'
+      expect(uriString, contains('Hi%20HexaKode%20Team%2C%0A%0AI%20would%20like%20to%20share%20my%20feedback%20about%20Odomex.%0A%0AFeedback%3A%0A'));
+      expect(uriString, isNot(contains('Hi+HexaKode+Team')));
+      expect(uriString, isNot(contains('+')));
+
+      // Decoded query parameters must match exact expected text and line breaks
+      expect(
+        uri.queryParameters['subject'],
+        'Odomex Feedback',
+      );
       expect(
         uri.queryParameters['body'],
         'Hi HexaKode Team,\n\nI would like to share my feedback about Odomex.\n\nFeedback:\n',
       );
-      expect(FeedbackService.feedbackEmail, 'contact@hexakode.in');
-      expect(FeedbackService.feedbackSubject, 'Odomex Feedback');
+    });
+
+    test('preserves user input with special characters (&, +, %, #, ?, /, :, ,, ., \', ", ₹)', () {
+      const customSubject = 'Odomex Review & Feedback + Questions?';
+      const customBody = '''
+Hi HexaKode Team,
+
+Great app! Cost was ₹1,250.50 for petrol/diesel & service #101.
+Checked: 100% accurate, C++ / Dart logic? Yes!
+
+Feedback:
+''';
+
+      final uri = FeedbackService.buildFeedbackUri(
+        subject: customSubject,
+        body: customBody,
+      );
+
+      final uriString = uri.toString();
+
+      // Spaces must be encoded as %20
+      expect(uriString, isNot(contains('Odomex+Review')));
+      expect(uriString, isNot(contains('Hi+HexaKode')));
+
+      // Raw + symbol in user text must be safely percent-encoded as %2B
+      expect(uriString, contains('%2B'));
+
+      // Ampersand in user text must be safely percent-encoded as %26
+      expect(uriString, contains('%26'));
+
+      // Rupee symbol ₹ must be safely percent-encoded
+      expect(uriString, contains(Uri.encodeComponent('₹')));
+
+      // Decoded parameters match exact raw strings
+      expect(uri.queryParameters['subject'], customSubject);
+      expect(uri.queryParameters['body'], customBody);
+    });
+
+    test('encodeQueryParameters formats query string properly with & delimiter', () {
+      final encoded = FeedbackService.encodeQueryParameters({
+        'subject': 'Test Subject',
+        'body': 'Line 1\nLine 2',
+      });
+
+      expect(encoded, 'subject=Test%20Subject&body=Line%201%0ALine%202');
+      expect(encoded.contains('+'), isFalse);
     });
   });
 

@@ -7,6 +7,7 @@ import 'package:odomex/models/vehicle.dart';
 class VehicleDashboardData {
   const VehicleDashboardData({
     required this.vehicle,
+    required this.effectiveOdometerReading,
     required this.recentRecords,
     required this.totalRecordsCount,
     required this.reminders,
@@ -15,6 +16,9 @@ class VehicleDashboardData {
 
   /// The active vehicle.
   final Vehicle vehicle;
+
+  /// Authoritative current odometer reading derived from records and baseline.
+  final double effectiveOdometerReading;
 
   /// The most recent vehicle records (up to 10), sorted newest first.
   final List<VehicleRecord> recentRecords;

@@ -52,6 +52,10 @@ final vehicleDashboardProvider =
     records: records,
   );
 
+  final effectiveOdometer =
+      ref.watch(latestOdometerReadingProvider(vehicleId)) ??
+          vehicle.odometerReading;
+
   // Period usage, distance, fuel, and cost analytics
   final periodSummary = PeriodUsageCalculator.calculate(
     vehicle: vehicle,
@@ -61,6 +65,7 @@ final vehicleDashboardProvider =
 
   return VehicleDashboardData(
     vehicle: vehicle,
+    effectiveOdometerReading: effectiveOdometer,
     recentRecords: recentRecords,
     totalRecordsCount: records.length,
     reminders: reminders,

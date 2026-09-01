@@ -141,7 +141,10 @@ class _VehicleDashboardScreenState extends ConsumerState<VehicleDashboardScreen>
               const SizedBox(height: AppSizes.spacingLg),
 
               // ── 2. Current Odometer Highlight ────────────
-              OdometerSummaryCard(vehicle: vehicle),
+              OdometerSummaryCard(
+                vehicle: vehicle,
+                odometerReading: dashboardData.effectiveOdometerReading,
+              ),
 
               const SizedBox(height: AppSizes.spacingLg),
 

@@ -83,6 +83,11 @@ class FakeVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
   }
 
   @override
+  Future<void> deleteRecord(String vehicleId, String recordId) async {
+    _records.removeWhere((r) => r.vehicleId == vehicleId && r.id == recordId);
+  }
+
+  @override
   Future<void> deleteRecordsForVehicle(String vehicleId) async {
     _records.removeWhere((r) => r.vehicleId == vehicleId);
   }
