@@ -9,9 +9,12 @@ import 'package:odomex/data/local/data_sources/app_settings_local_data_source.da
 import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/data/local/hive_registrar.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_settings/models/effective_vehicle_settings.dart';
+import 'package:odomex/features/vehicle_settings/providers/vehicle_settings_provider.dart';
 import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/notification_settings_provider.dart';
 import 'package:odomex/providers/theme_provider.dart';
+import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
 
 Future<void> main() async {
@@ -69,8 +72,7 @@ class _MainAppState extends ConsumerState<MainApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationPermissionProvider.notifier).refresh();
-      ref.read(notificationSettingsProvider.notifier).refreshPermissionAndSchedules();
+      _refreshNotifications();
     });
   }
 
@@ -84,14 +86,57 @@ class _MainAppState extends ConsumerState<MainApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       debugPrint('[Notifications] App resumed: Re-checking actual OS notification permissions...');
-      ref.read(notificationPermissionProvider.notifier).refresh();
-      ref.read(notificationSettingsProvider.notifier).refreshPermissionAndSchedules();
+      _refreshNotifications();
     }
+  }
+
+  /// Refreshes permissions and re-syncs all notification schedules,
+  /// including vehicle-specific PUC, insurance, service and oil change reminders.
+  void _refreshNotifications() {
+    // 1. Refresh OS permission state
+    ref.read(notificationPermissionProvider.notifier).refresh();
+
+    // 2. Push current vehicle + effective settings context into the notifier,
+    //    then refresh schedules. This approach avoids a circular provider dependency
+    //    (notificationSettingsProvider → vehicleProvider → vehicleRecordProvider → ...).
+    final vehicles = ref.read(vehicleProvider);
+    final effectiveSettings = _buildEffectiveSettingsMap(vehicles);
+
+    ref.read(notificationSettingsProvider.notifier)
+      ..setVehicleContext(
+        vehicles: vehicles,
+        effectiveSettings: effectiveSettings,
+      )
+      ..refreshPermissionAndSchedules();
+  }
+
+  /// Builds a map of vehicleId → EffectiveVehicleSettings for all vehicles.
+  Map<String, EffectiveVehicleSettings> _buildEffectiveSettingsMap(
+    List<Vehicle> vehicles,
+  ) {
+    final result = <String, EffectiveVehicleSettings>{};
+    for (final vehicle in vehicles) {
+      result[vehicle.id] = ref.read(effectiveVehicleSettingsProvider(vehicle.id));
+    }
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(appThemeModeProvider);
+
+    // Watch vehicle list changes and keep notification vehicle context in sync.
+    // This ensures reminder schedules are updated whenever vehicles are added,
+    // edited, or deleted while the app is running.
+    ref.listen(vehicleProvider, (previous, next) {
+      if (previous != next) {
+        final effectiveSettings = _buildEffectiveSettingsMap(next);
+        ref.read(notificationSettingsProvider.notifier).setVehicleContext(
+          vehicles: next,
+          effectiveSettings: effectiveSettings,
+        );
+      }
+    });
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,

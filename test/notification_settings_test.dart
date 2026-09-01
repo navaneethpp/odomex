@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odomex/core/notifications/notification_constants.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
+import 'package:odomex/core/notifications/vehicle_reminder_scheduler.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
 import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
 import 'package:odomex/features/settings/models/notification_permission_state.dart';
@@ -70,6 +71,7 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 class FakeNotificationService implements NotificationService {
   bool mockPermissionGranted = true;
   bool mockPlatformEnabled = true;
+  bool mockExactAlarmGranted = true;
   int showCallCount = 0;
   int showTestCallCount = 0;
   int cancelCallCount = 0;
@@ -156,7 +158,7 @@ class FakeNotificationService implements NotificationService {
   Future<NotificationPermissionState> checkPermissions() async {
     return NotificationPermissionState(
       notificationGranted: mockPlatformEnabled,
-      exactAlarmGranted: true,
+      exactAlarmGranted: mockExactAlarmGranted,
     );
   }
 
@@ -194,6 +196,25 @@ class FakeNotificationService implements NotificationService {
   Future<void> cancelAll() async {
     cancelAllCallCount++;
   }
+}
+
+/// A no-op fake for [VehicleReminderScheduler] used in notifier unit tests.
+/// Prevents the real scheduler from accessing the uninitialized NotificationService.instance.
+class FakeVehicleReminderScheduler extends VehicleReminderScheduler {
+  FakeVehicleReminderScheduler() : super();
+
+  @override
+  Future<void> syncAllVehicleReminders({
+    required dynamic vehicles,
+    required dynamic notificationSettings,
+    required dynamic effectiveSettings,
+  }) async {}
+
+  @override
+  Future<void> cancelAllVehicleReminders(dynamic vehicles) async {}
+
+  @override
+  Future<void> cancelRemindersForVehicle(String vehicleId) async {}
 }
 
 void main() {
@@ -235,6 +256,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       expect(notifier.state.enabled, false);
@@ -252,6 +274,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       fakeService.mockPermissionGranted = true;
@@ -269,6 +292,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       fakeService.mockPermissionGranted = true;
@@ -287,6 +311,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       fakeService.mockPermissionGranted = true;
@@ -306,6 +331,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       fakeService.mockPermissionGranted = true;
@@ -409,6 +435,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       // Enable master and daily activity
@@ -449,6 +476,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       final result = await notifier.setMasterEnabled(true);
@@ -468,6 +496,7 @@ void main() {
       final notifier = NotificationSettingsNotifier(
         repository: repository,
         notificationService: fakeService,
+        vehicleReminderScheduler: FakeVehicleReminderScheduler(),
       );
 
       await notifier.setMasterEnabled(true);

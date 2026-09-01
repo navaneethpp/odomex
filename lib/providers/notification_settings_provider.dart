@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
+import 'package:odomex/core/notifications/vehicle_reminder_scheduler.dart';
 import 'package:odomex/features/settings/models/notification_permission_state.dart';
 import 'package:odomex/features/settings/models/notification_settings.dart';
+import 'package:odomex/features/vehicle_settings/models/effective_vehicle_settings.dart';
+import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/theme_provider.dart';
 import 'package:odomex/repositories/app_settings_repository.dart';
 
@@ -24,7 +27,7 @@ class NotificationPermissionNotifier
     final permissions = await _notificationService.checkPermissions();
     state = permissions;
     debugPrint(
-        '[Notifications] Permission refreshed: notificationGranted=${permissions.notificationGranted}');
+        '[Notifications] Permission refreshed: notificationGranted=${permissions.notificationGranted}, exactAlarmGranted=${permissions.exactAlarmGranted}');
     return permissions;
   }
 }
@@ -32,6 +35,12 @@ class NotificationPermissionNotifier
 /// Exposes the [NotificationService] instance.
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService.instance;
+});
+
+/// Exposes the [VehicleReminderScheduler] instance.
+final vehicleReminderSchedulerProvider = Provider<VehicleReminderScheduler>((ref) {
+  final service = ref.watch(notificationServiceProvider);
+  return VehicleReminderScheduler(service: service);
 });
 
 /// Exposes the reactive OS-level notification permission state.
@@ -53,26 +62,64 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
   NotificationSettingsNotifier({
     required AppSettingsRepository repository,
     NotificationService? notificationService,
+    VehicleReminderScheduler? vehicleReminderScheduler,
     this._permissionNotifier,
   })  : _repository = repository,
         _notificationService =
             notificationService ?? NotificationService.instance,
+        _vehicleReminderScheduler =
+            vehicleReminderScheduler ?? VehicleReminderScheduler(),
         super(repository.getNotificationSettings()) {
     refreshPermissionAndSchedules();
   }
 
   final AppSettingsRepository _repository;
   final NotificationService _notificationService;
+  final VehicleReminderScheduler _vehicleReminderScheduler;
   final NotificationPermissionNotifier? _permissionNotifier;
 
-  /// Synchronizes active notification schedules with the current [settings] and real OS permission.
+  // ─────────────────────────────────────────────
+  // VEHICLE DATA CONTEXT
+  //
+  // These are injected externally (via setVehicleContext) so that
+  // the notifier can sync vehicle reminders without creating a provider
+  // dependency cycle (notificationSettingsProvider → vehicleProvider → back).
+  // ─────────────────────────────────────────────
+
+  List<Vehicle> _vehicles = [];
+  Map<String, EffectiveVehicleSettings> _effectiveSettings = {};
+
+  /// Updates the vehicle data context used when syncing vehicle reminders.
+  ///
+  /// Called by the app whenever the vehicle list or settings change.
+  void setVehicleContext({
+    required List<Vehicle> vehicles,
+    required Map<String, EffectiveVehicleSettings> effectiveSettings,
+  }) {
+    _vehicles = vehicles;
+    _effectiveSettings = effectiveSettings;
+  }
+
+  // ─────────────────────────────────────────────
+  // SCHEDULE SYNC
+  // ─────────────────────────────────────────────
+
+  /// Synchronizes all active notification schedules (daily activity + vehicle reminders).
   Future<void> _syncSchedules(NotificationSettings settings) async {
     try {
+      // 1. Daily activity reminder
       await _notificationService.syncDailyActivitySchedule(
         masterEnabled: settings.enabled,
         dailyActivityEnabled: settings.dailyActivity,
         hour: settings.dailyActivityReminderHour,
         minute: settings.dailyActivityReminderMinute,
+      );
+
+      // 2. Vehicle-specific reminders (PUC, Insurance, Service, Oil Change)
+      await _vehicleReminderScheduler.syncAllVehicleReminders(
+        vehicles: _vehicles,
+        notificationSettings: settings,
+        effectiveSettings: _effectiveSettings,
       );
     } catch (e) {
       debugPrint('NotificationSettingsNotifier: Schedule sync failed: $e');
@@ -90,6 +137,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
       await _syncSchedules(state);
     } else {
       await _notificationService.cancel(1100); // Daily activity ID
+      await _vehicleReminderScheduler.cancelAllVehicleReminders(_vehicles);
     }
   }
 
@@ -222,10 +270,12 @@ final notificationSettingsProvider =
         (ref) {
   final repository = ref.watch(appSettingsRepositoryProvider);
   final notificationService = ref.watch(notificationServiceProvider);
+  final vehicleReminderScheduler = ref.watch(vehicleReminderSchedulerProvider);
   final permissionNotifier = ref.watch(notificationPermissionProvider.notifier);
   return NotificationSettingsNotifier(
     repository: repository,
     notificationService: notificationService,
+    vehicleReminderScheduler: vehicleReminderScheduler,
     permissionNotifier: permissionNotifier,
   );
 });

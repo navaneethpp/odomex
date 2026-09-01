@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:odomex/core/notifications/notification_constants.dart';
@@ -172,13 +173,38 @@ class NotificationService {
     }
   }
 
-  /// Checks the current OS-level notification permission and alarm capability.
+  /// Checks the current OS-level notification permission and exact alarm capability.
+  ///
+  /// On Android 12+ (API 31+), `SCHEDULE_EXACT_ALARM` requires explicit user approval
+  /// from Settings → Special App Access → Alarms & Reminders. This method queries
+  /// the real OS state rather than assuming it is granted.
   Future<NotificationPermissionState> checkPermissions() async {
     final notificationGranted = await areNotificationsEnabled();
+    final exactAlarmGranted = await _canScheduleExactAlarms();
     return NotificationPermissionState(
       notificationGranted: notificationGranted,
-      exactAlarmGranted: true,
+      exactAlarmGranted: exactAlarmGranted,
     );
+  }
+
+  /// Checks whether exact alarms can be scheduled on this device.
+  ///
+  /// Returns `true` on Android versions below API 31, on iOS/macOS, and when the
+  /// `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` permission has been explicitly granted.
+  Future<bool> _canScheduleExactAlarms() async {
+    try {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        final canSchedule = await androidPlugin.canScheduleExactNotifications();
+        return canSchedule ?? true;
+      }
+      // iOS/macOS/desktop — exact alarms not applicable; return true.
+      return true;
+    } catch (e) {
+      debugPrint('[Notifications] Could not check exact alarm capability: $e. Assuming granted.');
+      return true;
+    }
   }
 
   /// Checks whether notifications are enabled at the platform/OS level.
@@ -256,6 +282,10 @@ class NotificationService {
   }
 
   /// Schedules a one-time notification at a specific [scheduledDate].
+  ///
+  /// Prefers exact alarms (`exactAllowWhileIdle`). If the OS denies exact alarm
+  /// scheduling (Android 12+ permission not granted), automatically falls back to
+  /// an inexact alarm (`inexactAllowWhileIdle`), which fires approximately on time.
   Future<void> scheduleNotificationAt({
     required int id,
     required String title,
@@ -293,22 +323,18 @@ class NotificationService {
         macOS: darwinDetails,
       );
 
-      const scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
-
-      await _plugin.zonedSchedule(
+      await _scheduleWithFallback(
         id: id,
         title: title,
         body: body,
         scheduledDate: scheduledDate,
-        notificationDetails: details,
-        androidScheduleMode: scheduleMode,
+        details: details,
         payload: payload,
       );
 
       debugPrint('[Notifications] Scheduled notification at specific time:');
       debugPrint('[Notifications] Notification ID: $id');
       debugPrint('[Notifications] Next scheduled time: $scheduledDate');
-      debugPrint('[Notifications] Schedule mode: $scheduleMode');
       debugPrint('[Notifications] Scheduling result: SUCCESS');
     } catch (e, st) {
       debugPrint('[Notifications] Failed to schedule notification ($e)\n$st');
@@ -316,6 +342,8 @@ class NotificationService {
   }
 
   /// Schedules a daily recurring notification at the specified local [hour] and [minute].
+  ///
+  /// Prefers exact alarms; automatically falls back to inexact if not available.
   Future<void> scheduleDailyNotification({
     required int id,
     required String title,
@@ -355,17 +383,15 @@ class NotificationService {
       );
 
       final scheduledDate = _nextInstanceOfTime(hour, minute);
-      const scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
 
-      await _plugin.zonedSchedule(
+      await _scheduleWithFallback(
         id: id,
         title: title,
         body: body,
         scheduledDate: scheduledDate,
-        notificationDetails: details,
-        androidScheduleMode: scheduleMode,
-        matchDateTimeComponents: DateTimeComponents.time,
+        details: details,
         payload: payload,
+        matchDateTimeComponents: DateTimeComponents.time,
       );
 
       debugPrint('[Notifications] Daily Activity notification scheduled:');
@@ -373,11 +399,50 @@ class NotificationService {
       debugPrint('[Notifications] Current time: ${tz.TZDateTime.now(tz.local)}');
       debugPrint('[Notifications] Next scheduled time: $scheduledDate');
       debugPrint('[Notifications] Notification ID: $id');
-      debugPrint('[Notifications] Schedule mode: $scheduleMode');
       debugPrint('[Notifications] Scheduling result: SUCCESS');
     } catch (e, st) {
       debugPrint(
           '[Notifications] Failed to schedule daily notification ($e)\n$st');
+    }
+  }
+
+  /// Internal helper: schedules with exact alarm first; falls back to inexact on PlatformException.
+  Future<void> _scheduleWithFallback({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails details,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+        payload: payload,
+      );
+      debugPrint('[Notifications] Scheduled with EXACT alarm mode (id=$id)');
+    } on PlatformException catch (e) {
+      // Android 12+ throws PlatformException when SCHEDULE_EXACT_ALARM is not granted.
+      // Fall back to inexact which fires approximately at the right time (±15 min).
+      debugPrint('[Notifications] Exact alarm denied (${e.message}). Falling back to inexact alarm for id=$id');
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+        payload: payload,
+      );
+      debugPrint('[Notifications] Scheduled with INEXACT alarm mode (id=$id)');
     }
   }
 
