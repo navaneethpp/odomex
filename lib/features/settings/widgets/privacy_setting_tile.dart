@@ -1,38 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:odomex/core/constants/app_constants.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:odomex/features/privacy/widgets/privacy_policy_dialog.dart';
 
-/// Settings tile for opening the official Privacy Policy webpage.
+/// Settings tile for viewing the in-app Privacy Policy & Data Usage dialog.
 class PrivacySettingTile extends StatelessWidget {
   const PrivacySettingTile({super.key});
-
-  Future<void> _openPrivacyPolicy(BuildContext context) async {
-    final uri = Uri.parse(AppConstants.privacyPolicyUrl);
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open the Privacy Policy link.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open the Privacy Policy link.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,11 +40,11 @@ class PrivacySettingTile extends StatelessWidget {
           ),
         ),
         trailing: Icon(
-          Icons.arrow_outward_rounded,
-          size: AppSizes.iconSm,
+          Icons.chevron_right_rounded,
+          size: AppSizes.iconMd,
           color: colorScheme.onSurfaceVariant,
         ),
-        onTap: () => _openPrivacyPolicy(context),
+        onTap: () => PrivacyPolicyDialog.show(context),
       ),
     );
   }
