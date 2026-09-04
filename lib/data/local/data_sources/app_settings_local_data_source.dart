@@ -48,6 +48,12 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists the accepted Privacy Policy version string.
   Future<void> savePrivacyPolicyAcceptedVersion(String version);
+
+  /// Returns whether Auto-fill Current Odometer is enabled (default: true).
+  bool getAutoFillCurrentOdometer();
+
+  /// Persists Auto-fill Current Odometer setting.
+  Future<void> saveAutoFillCurrentOdometer(bool enabled);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -72,6 +78,7 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _notificationSettingsKey = 'notification_settings';
   static const String _privacyPolicyAcceptedVersionKey =
       'privacy_policy_accepted_version';
+  static const String _autoFillOdometerKey = 'auto_fill_current_odometer';
 
   @override
   AppThemeMode getThemeMode() {
@@ -208,6 +215,26 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
     final box = _settingsBox;
     if (box != null) {
       await box.put(_privacyPolicyAcceptedVersionKey, version.trim());
+    }
+  }
+
+  @override
+  bool getAutoFillCurrentOdometer() {
+    final box = _settingsBox;
+    if (box != null) {
+      final val = box.get(_autoFillOdometerKey);
+      if (val is bool) {
+        return val;
+      }
+    }
+    return true; // Default to ON
+  }
+
+  @override
+  Future<void> saveAutoFillCurrentOdometer(bool enabled) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_autoFillOdometerKey, enabled);
     }
   }
 }

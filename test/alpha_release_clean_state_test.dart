@@ -182,6 +182,12 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   Future<void> saveNotificationSettings(NotificationSettings settings) async {
     _notificationSettings = settings;
   }
+  @override
+  bool getAutoFillCurrentOdometer() => true;
+
+  @override
+  Future<void> saveAutoFillCurrentOdometer(bool enabled) async {}
+
 
   @override
   AppThemeMode getThemeMode() => _themeMode;

@@ -114,6 +114,12 @@ class FakePrivacyAppSettingsDataSource
   ) async {
     _notificationSettings = settings;
   }
+  @override
+  bool getAutoFillCurrentOdometer() => true;
+
+  @override
+  Future<void> saveAutoFillCurrentOdometer(bool enabled) async {}
+
 }
 
 class FakePrivacyVehicleDataSource

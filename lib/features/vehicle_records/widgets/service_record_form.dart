@@ -20,11 +20,13 @@ class ServiceRecordForm extends StatefulWidget {
     required this.vehicleId,
     this.currentOdometer,
     this.initialRecord,
+    this.defaultOdometer,
   });
 
   final String vehicleId;
   final double? currentOdometer;
   final ServiceRecord? initialRecord;
+  final String? defaultOdometer;
 
   @override
   VehicleRecordFormState<ServiceRecordForm> createState() =>
@@ -54,6 +56,8 @@ class _ServiceRecordFormState
         _costController.text = rec.cost.toString();
       }
       _descriptionController.text = rec.description;
+    } else if (widget.defaultOdometer != null) {
+      _odometerController.text = widget.defaultOdometer!;
     }
   }
 

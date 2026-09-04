@@ -26,11 +26,13 @@ class FuelRecordForm extends StatefulWidget {
     required this.vehicleId,
     this.currentOdometer,
     this.initialRecord,
+    this.defaultOdometer,
   });
 
   final String vehicleId;
   final double? currentOdometer;
   final FuelRecord? initialRecord;
+  final String? defaultOdometer;
 
   @override
   VehicleRecordFormState<FuelRecordForm> createState() =>
@@ -62,6 +64,8 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
       if (rec.station != null) _stationController.text = rec.station!;
       if (rec.notes != null) _notesController.text = rec.notes!;
       _calculatedTotalCost = rec.cost;
+    } else if (widget.defaultOdometer != null) {
+      _odometerController.text = widget.defaultOdometer!;
     }
     
     _quantityController.addListener(_onCostInputsChanged);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/settings/widgets/about_app_card.dart';
 import 'package:odomex/features/settings/widgets/appearance_setting_tile.dart';
+import 'package:odomex/features/settings/widgets/auto_fill_odometer_setting_tile.dart';
 import 'package:odomex/features/settings/widgets/developer_badge.dart';
 import 'package:odomex/features/settings/widgets/notification_master_tile.dart';
 import 'package:odomex/features/settings/widgets/notification_reminders_card.dart';
@@ -76,13 +77,19 @@ class SettingsScreen extends StatelessWidget {
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 7. Vehicle Defaults ───────────────────
+            // ── 7. Record Defaults ────────────────────
+            SettingsSectionTitle(title: 'RECORD DEFAULTS'),
+            AutoFillOdometerSettingTile(),
+
+            SizedBox(height: AppSizes.spacingXl),
+
+            // ── 8. Vehicle Defaults ───────────────────
             SettingsSectionTitle(title: 'VEHICLE DEFAULTS'),
             VehicleDefaultsSettingTile(),
 
             SizedBox(height: AppSizes.spacingXl),
 
-            // ── 8. Vehicle List Preferences ───────────
+            // ── 9. Vehicle List Preferences ───────────
             SettingsSectionTitle(title: 'VEHICLE LIST'),
             VehicleSortSettingTile(),
           ],

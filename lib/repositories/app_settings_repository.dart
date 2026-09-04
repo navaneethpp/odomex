@@ -66,4 +66,12 @@ class AppSettingsRepository {
   /// Persists the accepted Privacy Policy version string.
   Future<void> savePrivacyPolicyAcceptedVersion(String version) =>
       localDataSource.savePrivacyPolicyAcceptedVersion(version);
+
+  /// Returns whether Auto-fill Current Odometer is enabled (default: true).
+  bool getAutoFillCurrentOdometer() =>
+      localDataSource.getAutoFillCurrentOdometer();
+
+  /// Persists Auto-fill Current Odometer setting.
+  Future<void> saveAutoFillCurrentOdometer(bool enabled) =>
+      localDataSource.saveAutoFillCurrentOdometer(enabled);
 }

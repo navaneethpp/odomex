@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:odomex/providers/auto_fill_odometer_provider.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record_type.dart';
@@ -59,6 +60,7 @@ class AddVehicleRecordSheet extends ConsumerStatefulWidget {
 class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
   late VehicleRecordType _selectedType;
   bool _isSaving = false;
+  String? _defaultOdometerText;
 
   @override
   void initState() {
@@ -76,6 +78,17 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
       }
     } else {
       _selectedType = VehicleRecordType.odometer;
+
+      // Auto-fill Current Odometer Feature
+      final autoFillEnabled = ref.read(autoFillOdometerProvider);
+      if (autoFillEnabled) {
+        final latest = ref.read(latestOdometerReadingProvider(widget.vehicleId));
+        if (latest != null && latest > 0) {
+          _defaultOdometerText = latest % 1 == 0
+              ? latest.toInt().toString()
+              : latest.toString();
+        }
+      }
     }
   }
 
@@ -251,6 +264,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
           initialRecord: widget.initialRecord as OdometerRecord?,
+          defaultOdometer: _defaultOdometerText,
         );
       case VehicleRecordType.fuelRefill:
         return FuelRecordForm(
@@ -258,6 +272,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
           initialRecord: widget.initialRecord as FuelRecord?,
+          defaultOdometer: _defaultOdometerText,
         );
       case VehicleRecordType.service:
         return ServiceRecordForm(
@@ -265,6 +280,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
           initialRecord: widget.initialRecord as ServiceRecord?,
+          defaultOdometer: _defaultOdometerText,
         );
       case VehicleRecordType.oilChange:
         return OilChangeRecordForm(
@@ -272,6 +288,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
           initialRecord: widget.initialRecord as OilChangeRecord?,
+          defaultOdometer: _defaultOdometerText,
         );
     }
   }

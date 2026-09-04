@@ -18,6 +18,7 @@ class OdometerRecordForm extends StatefulWidget {
     required this.vehicleId,
     this.currentOdometer,
     this.initialRecord,
+    this.defaultOdometer,
   });
 
   /// The vehicle this record belongs to.
@@ -28,6 +29,9 @@ class OdometerRecordForm extends StatefulWidget {
 
   /// Optional record to edit.
   final OdometerRecord? initialRecord;
+
+  /// Optional default odometer string.
+  final String? defaultOdometer;
 
   @override
   VehicleRecordFormState<OdometerRecordForm> createState() =>
@@ -51,6 +55,8 @@ class _OdometerRecordFormState
       if (rec.notes != null) {
         _notesController.text = rec.notes!;
       }
+    } else if (widget.defaultOdometer != null) {
+      _odometerController.text = widget.defaultOdometer!;
     }
   }
 

@@ -33,11 +33,13 @@ class OilChangeRecordForm extends StatefulWidget {
     required this.vehicleId,
     this.currentOdometer,
     this.initialRecord,
+    this.defaultOdometer,
   });
 
   final String vehicleId;
   final double? currentOdometer;
   final OilChangeRecord? initialRecord;
+  final String? defaultOdometer;
 
   @override
   VehicleRecordFormState<OilChangeRecordForm> createState() =>
@@ -81,6 +83,8 @@ class _OilChangeRecordFormState
       if (rec.notes != null) {
         _notesController.text = rec.notes!;
       }
+    } else if (widget.defaultOdometer != null) {
+      _odometerController.text = widget.defaultOdometer!;
     }
   }
 
