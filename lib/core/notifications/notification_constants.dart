@@ -8,7 +8,10 @@ class NotificationConstants {
 
   // ── Channels ──────────────────────────────────────────────
   /// General reminders and alerts channel ID.
-  static const String remindersChannelId = 'odomex_reminders';
+  static const String remindersChannelId = 'odomex_reminders_v2';
+  
+  /// Legacy channel ID for migration/cleanup.
+  static const String legacyRemindersChannelId = 'odomex_reminders';
 
   /// Human-readable channel name shown in Android system notification settings.
   static const String remindersChannelName = 'Odomex Notifications';
@@ -85,8 +88,12 @@ class NotificationConstants {
   }
 
   // ── Icons & Drawables ─────────────────────────────────────
-  /// Monochrome notification icon defined in android/app/src/main/res/drawable/ic_notification.xml.
-  static const String androidNotificationIcon = '@drawable/ic_notification';
+  /// Name of the Android drawable resource used for the status bar icon.
+  /// Must be just the name, without '@drawable/' or extensions.
+  static const String androidNotificationIcon = 'ic_notification';
+
+  /// Fallback icon if the main one is unavailable (e.g. legacy devices).
+  static const String androidNotificationIconFallback = 'mipmap/ic_launcher';
 
   // ── Payloads ──────────────────────────────────────────────
   static const String payloadKeyType = 'type';

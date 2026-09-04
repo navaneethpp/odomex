@@ -260,7 +260,19 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettings> {
       return;
     }
 
-    await _notificationService.showTestNotification();
+    try {
+      await _notificationService.showTestNotification();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to show test notification: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }
 

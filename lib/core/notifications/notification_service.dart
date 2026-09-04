@@ -110,6 +110,10 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidPlugin != null) {
+        // Clean up legacy channel to avoid duplicates and ensure the new icon/importance applies.
+        await androidPlugin.deleteNotificationChannel(
+            channelId: NotificationConstants.legacyRemindersChannelId);
+
         const channel = AndroidNotificationChannel(
           NotificationConstants.remindersChannelId,
           NotificationConstants.remindersChannelName,
