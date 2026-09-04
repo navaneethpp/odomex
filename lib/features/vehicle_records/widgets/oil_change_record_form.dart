@@ -32,10 +32,12 @@ class OilChangeRecordForm extends StatefulWidget {
     super.key,
     required this.vehicleId,
     this.currentOdometer,
+    this.initialRecord,
   });
 
   final String vehicleId;
   final double? currentOdometer;
+  final OilChangeRecord? initialRecord;
 
   @override
   VehicleRecordFormState<OilChangeRecordForm> createState() =>
@@ -56,6 +58,33 @@ class _OilChangeRecordFormState
   bool get _isCustomOilType => _selectedOilType == 'Other';
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialRecord != null) {
+      final rec = widget.initialRecord!;
+      _odometerController.text = rec.odometerReading.toString();
+      _date = rec.date;
+      if (rec.oilType != null) {
+        if (_presetOilTypes.contains(rec.oilType)) {
+          _selectedOilType = rec.oilType!;
+        } else {
+          _selectedOilType = 'Other';
+          _customOilTypeController.text = rec.oilType!;
+        }
+      }
+      if (rec.quantity != null) {
+        _quantityController.text = rec.quantity.toString();
+      }
+      if (rec.cost != null) {
+        _costController.text = rec.cost.toString();
+      }
+      if (rec.notes != null) {
+        _notesController.text = rec.notes!;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _odometerController.dispose();
     _customOilTypeController.dispose();
@@ -73,16 +102,31 @@ class _OilChangeRecordFormState
         ? _customOilTypeController.text.trim()
         : _selectedOilType;
 
+    final parsedQty = double.tryParse(_quantityController.text.trim());
+    final parsedCost = double.tryParse(_costController.text.trim());
+    final parsedNotes = _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim();
+
+    if (widget.initialRecord != null) {
+      return widget.initialRecord!.copyWith(
+        date: _date!,
+        odometerReading: double.parse(_odometerController.text.trim()),
+        oilType: resolvedOilType,
+        quantity: parsedQty,
+        cost: parsedCost,
+        notes: parsedNotes,
+      );
+    }
+
     return OilChangeRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
       odometerReading: double.parse(_odometerController.text.trim()),
       oilType: resolvedOilType,
-      quantity: double.parse(_quantityController.text.trim()),
-      cost: double.parse(_costController.text.trim()),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+      quantity: parsedQty,
+      cost: parsedCost,
+      notes: parsedNotes,
     );
   }
 

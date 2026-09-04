@@ -17,6 +17,7 @@ class OdometerRecordForm extends StatefulWidget {
     super.key,
     required this.vehicleId,
     this.currentOdometer,
+    this.initialRecord,
   });
 
   /// The vehicle this record belongs to.
@@ -24,6 +25,9 @@ class OdometerRecordForm extends StatefulWidget {
 
   /// The vehicle's current known odometer (used for cross-field consistency).
   final double? currentOdometer;
+
+  /// Optional record to edit.
+  final OdometerRecord? initialRecord;
 
   @override
   VehicleRecordFormState<OdometerRecordForm> createState() =>
@@ -38,6 +42,19 @@ class _OdometerRecordFormState
   final _notesController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialRecord != null) {
+      final rec = widget.initialRecord!;
+      _odometerController.text = rec.odometer.toString();
+      _date = rec.date;
+      if (rec.notes != null) {
+        _notesController.text = rec.notes!;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _odometerController.dispose();
     _notesController.dispose();
@@ -47,13 +64,23 @@ class _OdometerRecordFormState
   @override
   OdometerRecord? buildRecord() {
     if (!_formKey.currentState!.validate()) return null;
+    
+    final odo = double.parse(_odometerController.text.trim());
+    final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
+    
+    if (widget.initialRecord != null) {
+      return widget.initialRecord!.copyWith(
+        date: _date!,
+        odometer: odo,
+        notes: notes,
+      );
+    }
+    
     return OdometerRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
-      odometer: double.parse(_odometerController.text.trim()),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+      odometer: odo,
+      notes: notes,
     );
   }
 

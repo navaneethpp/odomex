@@ -25,10 +25,12 @@ class FuelRecordForm extends StatefulWidget {
     super.key,
     required this.vehicleId,
     this.currentOdometer,
+    this.initialRecord,
   });
 
   final String vehicleId;
   final double? currentOdometer;
+  final FuelRecord? initialRecord;
 
   @override
   VehicleRecordFormState<FuelRecordForm> createState() =>
@@ -49,6 +51,19 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialRecord != null) {
+      final rec = widget.initialRecord!;
+      _quantityController.text = rec.quantity.toString();
+      _priceController.text = rec.costPerLitre.toStringAsFixed(2);
+      if (rec.odometerReading != null) {
+        _odometerController.text = rec.odometerReading.toString();
+      }
+      _date = rec.date;
+      if (rec.station != null) _stationController.text = rec.station!;
+      if (rec.notes != null) _notesController.text = rec.notes!;
+      _calculatedTotalCost = rec.cost;
+    }
+    
     _quantityController.addListener(_onCostInputsChanged);
     _priceController.addListener(_onCostInputsChanged);
   }
@@ -95,20 +110,29 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     if (totalCost == null) return null;
 
     final odometerText = _odometerController.text.trim();
+    final parsedOdo = odometerText.isNotEmpty ? double.tryParse(odometerText) : null;
+    final parsedStation = _stationController.text.trim().isEmpty ? null : _stationController.text.trim();
+    final parsedNotes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
+
+    if (widget.initialRecord != null) {
+      return widget.initialRecord!.copyWith(
+        date: _date!,
+        quantity: quantity,
+        cost: totalCost,
+        odometerReading: parsedOdo,
+        station: parsedStation,
+        notes: parsedNotes,
+      );
+    }
+
     return FuelRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
       quantity: quantity,
       cost: totalCost,
-      odometerReading: odometerText.isNotEmpty
-          ? double.tryParse(odometerText)
-          : null,
-      station: _stationController.text.trim().isEmpty
-          ? null
-          : _stationController.text.trim(),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+      odometerReading: parsedOdo,
+      station: parsedStation,
+      notes: parsedNotes,
     );
   }
 

@@ -66,6 +66,21 @@ class OdometerRecord extends VehicleRecord {
         notes: notes,
       );
 
+  OdometerRecord copyWith({
+    DateTime? date,
+    double? odometer,
+    String? notes,
+  }) {
+    return OdometerRecord(
+      id: id,
+      vehicleId: vehicleId,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      odometer: odometer ?? this.odometer,
+      notes: notes ?? this.notes,
+    );
+  }
+
   /// Odometer reading in kilometres.
   final double odometer;
 
@@ -115,6 +130,27 @@ class FuelRecord extends VehicleRecord {
         station: station,
         notes: notes,
       );
+
+  FuelRecord copyWith({
+    DateTime? date,
+    double? quantity,
+    double? cost,
+    double? odometerReading,
+    String? station,
+    String? notes,
+  }) {
+    return FuelRecord(
+      id: id,
+      vehicleId: vehicleId,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      quantity: quantity ?? this.quantity,
+      cost: cost ?? this.cost,
+      odometerReading: odometerReading ?? this.odometerReading,
+      station: station ?? this.station,
+      notes: notes ?? this.notes,
+    );
+  }
 
   /// Fuel quantity added, in litres.
   final double quantity;
@@ -216,6 +252,27 @@ class ServiceRecord extends VehicleRecord {
         notes: notes,
       );
 
+  ServiceRecord copyWith({
+    DateTime? date,
+    ServiceType? serviceType,
+    String? description,
+    double? odometerReading,
+    double? cost,
+    String? notes,
+  }) {
+    return ServiceRecord(
+      id: id,
+      vehicleId: vehicleId,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      serviceType: serviceType ?? this.serviceType,
+      description: description ?? this.description,
+      odometerReading: odometerReading ?? this.odometerReading,
+      cost: cost ?? this.cost,
+      notes: notes ?? this.notes,
+    );
+  }
+
   /// Category of service performed.
   final ServiceType serviceType;
 
@@ -271,6 +328,27 @@ class OilChangeRecord extends VehicleRecord {
         cost: cost,
         notes: notes,
       );
+
+  OilChangeRecord copyWith({
+    DateTime? date,
+    double? odometerReading,
+    String? oilType,
+    double? quantity,
+    double? cost,
+    String? notes,
+  }) {
+    return OilChangeRecord(
+      id: id,
+      vehicleId: vehicleId,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      odometerReading: odometerReading ?? this.odometerReading,
+      oilType: oilType ?? this.oilType,
+      quantity: quantity ?? this.quantity,
+      cost: cost ?? this.cost,
+      notes: notes ?? this.notes,
+    );
+  }
 
   /// Odometer reading at which the oil was changed (km).
   final double odometerReading;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
+import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record_type.dart';
 import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
 import 'package:odomex/features/vehicle_records/widgets/fuel_record_form.dart';
@@ -19,6 +20,7 @@ import 'package:odomex/providers/vehicle_provider.dart';
 Future<void> showAddVehicleRecordSheet({
   required BuildContext context,
   required String vehicleId,
+  VehicleRecord? initialRecord,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -27,6 +29,7 @@ Future<void> showAddVehicleRecordSheet({
     showDragHandle: true,
     builder: (sheetContext) => AddVehicleRecordSheet(
       vehicleId: vehicleId,
+      initialRecord: initialRecord,
     ),
   );
 }
@@ -42,9 +45,11 @@ class AddVehicleRecordSheet extends ConsumerStatefulWidget {
   const AddVehicleRecordSheet({
     super.key,
     required this.vehicleId,
+    this.initialRecord,
   });
 
   final String vehicleId;
+  final VehicleRecord? initialRecord;
 
   @override
   ConsumerState<AddVehicleRecordSheet> createState() =>
@@ -52,8 +57,27 @@ class AddVehicleRecordSheet extends ConsumerStatefulWidget {
 }
 
 class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
-  VehicleRecordType _selectedType = VehicleRecordType.odometer;
+  late VehicleRecordType _selectedType;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRecord != null) {
+      final rec = widget.initialRecord!;
+      if (rec is OdometerRecord) {
+        _selectedType = VehicleRecordType.odometer;
+      } else if (rec is FuelRecord) {
+        _selectedType = VehicleRecordType.fuelRefill;
+      } else if (rec is ServiceRecord) {
+        _selectedType = VehicleRecordType.service;
+      } else if (rec is OilChangeRecord) {
+        _selectedType = VehicleRecordType.oilChange;
+      }
+    } else {
+      _selectedType = VehicleRecordType.odometer;
+    }
+  }
 
   // Separate GlobalKey per form type to ensure clean form lifecycle and state
   final _odometerKey = GlobalKey<VehicleRecordFormState>();
@@ -83,8 +107,12 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Add record to repository and synchronize all derived vehicle state
-      await ref.read(vehicleRecordProvider.notifier).addRecord(record);
+      // 1. Add/Update record in repository and synchronize all derived vehicle state
+      if (widget.initialRecord != null) {
+        await ref.read(vehicleRecordProvider.notifier).updateRecord(record);
+      } else {
+        await ref.read(vehicleRecordProvider.notifier).addRecord(record);
+      }
 
       if (!mounted) return;
 
@@ -92,9 +120,10 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
       Navigator.pop(context);
 
       // 3. Feedback
+      final actionStr = widget.initialRecord != null ? 'updated' : 'added';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_selectedType.title} added successfully'),
+          content: Text('${_selectedType.title} $actionStr successfully'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -132,7 +161,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
             children: [
               // ── Header ──
               Text(
-                'Add Record',
+                widget.initialRecord != null ? 'Edit Record' : 'Add Record',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -186,14 +215,15 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
               const SizedBox(height: AppSizes.spacingLg),
 
               // ── Record Type Selector ──
-              RecordTypeSelector(
-                selected: _selectedType,
-                onSelected: (type) {
-                  setState(() => _selectedType = type);
-                },
-              ),
-
-              const SizedBox(height: AppSizes.spacingXl),
+              if (widget.initialRecord == null) ...[
+                RecordTypeSelector(
+                  selected: _selectedType,
+                  onSelected: (type) {
+                    setState(() => _selectedType = type);
+                  },
+                ),
+                const SizedBox(height: AppSizes.spacingXl),
+              ],
 
               // ── Contextual Form ──
               _buildActiveForm(vehicle?.odometerReading),
@@ -220,24 +250,28 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
           key: _odometerKey,
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
+          initialRecord: widget.initialRecord as OdometerRecord?,
         );
       case VehicleRecordType.fuelRefill:
         return FuelRecordForm(
           key: _fuelKey,
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
+          initialRecord: widget.initialRecord as FuelRecord?,
         );
       case VehicleRecordType.service:
         return ServiceRecordForm(
           key: _serviceKey,
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
+          initialRecord: widget.initialRecord as ServiceRecord?,
         );
       case VehicleRecordType.oilChange:
         return OilChangeRecordForm(
           key: _oilKey,
           vehicleId: widget.vehicleId,
           currentOdometer: currentOdometer,
+          initialRecord: widget.initialRecord as OilChangeRecord?,
         );
     }
   }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
+import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
+import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 
 /// Renders a single vehicle record card with type-specific details.
-class RecentRecordCard extends StatelessWidget {
+class RecentRecordCard extends ConsumerWidget {
   const RecentRecordCard({
     super.key,
     required this.record,
@@ -26,8 +29,52 @@ class RecentRecordCard extends StatelessWidget {
     return _dateFormat.format(date);
   }
 
+  Future<void> _showDeleteConfirmation(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Record?'),
+        content: const Text(
+          'This action cannot be undone. Are you sure you want to delete this record?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await ref.read(vehicleRecordProvider.notifier).deleteRecord(
+            record.vehicleId,
+            record.id,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Record deleted'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -115,17 +162,53 @@ class RecentRecordCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        typeTitle,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
+                      Expanded(
+                        child: Text(
+                          typeTitle,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                       Text(
                         _formatDate(record.date),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.spacingXs),
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: PopupMenuButton<String>(
+                          padding: EdgeInsets.zero,
+                          iconSize: 20,
+                          icon: Icon(
+                            Icons.more_vert_rounded,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          onSelected: (val) {
+                            if (val == 'edit') {
+                              showAddVehicleRecordSheet(
+                                context: context,
+                                vehicleId: record.vehicleId,
+                                initialRecord: record,
+                              );
+                            } else if (val == 'delete') {
+                              _showDeleteConfirmation(context, ref);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit Record'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete Record', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
                         ),
                       ),
                     ],

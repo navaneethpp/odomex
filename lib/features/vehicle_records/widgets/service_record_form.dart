@@ -19,10 +19,12 @@ class ServiceRecordForm extends StatefulWidget {
     super.key,
     required this.vehicleId,
     this.currentOdometer,
+    this.initialRecord,
   });
 
   final String vehicleId;
   final double? currentOdometer;
+  final ServiceRecord? initialRecord;
 
   @override
   VehicleRecordFormState<ServiceRecordForm> createState() =>
@@ -39,6 +41,23 @@ class _ServiceRecordFormState
   final _descriptionController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialRecord != null) {
+      final rec = widget.initialRecord!;
+      _serviceType = rec.serviceType;
+      _date = rec.date;
+      if (rec.odometerReading != null) {
+        _odometerController.text = rec.odometerReading.toString();
+      }
+      if (rec.cost != null) {
+        _costController.text = rec.cost.toString();
+      }
+      _descriptionController.text = rec.description;
+    }
+  }
+
+  @override
   void dispose() {
     _odometerController.dispose();
     _costController.dispose();
@@ -52,15 +71,26 @@ class _ServiceRecordFormState
     final odometerText = _odometerController.text.trim();
     final costText = _costController.text.trim();
 
+    final parsedOdo = odometerText.isNotEmpty ? double.tryParse(odometerText) : null;
+    final parsedCost = costText.isNotEmpty ? double.tryParse(costText) : null;
+
+    if (widget.initialRecord != null) {
+      return widget.initialRecord!.copyWith(
+        date: _date!,
+        serviceType: _serviceType,
+        description: _descriptionController.text.trim(),
+        odometerReading: parsedOdo,
+        cost: parsedCost,
+      );
+    }
+
     return ServiceRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
       serviceType: _serviceType,
       description: _descriptionController.text.trim(),
-      odometerReading: odometerText.isNotEmpty
-          ? double.tryParse(odometerText)
-          : null,
-      cost: costText.isNotEmpty ? double.tryParse(costText) : null,
+      odometerReading: parsedOdo,
+      cost: parsedCost,
     );
   }
 
