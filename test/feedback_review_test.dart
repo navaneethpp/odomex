@@ -62,6 +62,15 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> savePrivacyPolicyAcceptedVersion(String version) async {}
+
+  @override
+  List<String> getCustomInsuranceProviders() => [];
+
+  @override
+  Future<void> saveCustomInsuranceProviders(List<String> providers) async {}
+
+  @override
+  Future<void> addCustomInsuranceProvider(String provider) async {}
 }
 
 void main() {

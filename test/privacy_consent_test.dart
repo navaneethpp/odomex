@@ -120,6 +120,15 @@ class FakePrivacyAppSettingsDataSource
   @override
   Future<void> saveAutoFillCurrentOdometer(bool enabled) async {}
 
+
+  @override
+  List<String> getCustomInsuranceProviders() => [];
+
+  @override
+  Future<void> saveCustomInsuranceProviders(List<String> providers) async {}
+
+  @override
+  Future<void> addCustomInsuranceProvider(String provider) async {}
 }
 
 class FakePrivacyVehicleDataSource

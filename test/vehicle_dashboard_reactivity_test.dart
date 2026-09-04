@@ -128,6 +128,15 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> saveNotificationsEnabled(bool enabled) async {}
+
+  @override
+  List<String> getCustomInsuranceProviders() => [];
+
+  @override
+  Future<void> saveCustomInsuranceProviders(List<String> providers) async {}
+
+  @override
+  Future<void> addCustomInsuranceProvider(String provider) async {}
 }
 
 class FakeReactivityRecordLocalDataSource

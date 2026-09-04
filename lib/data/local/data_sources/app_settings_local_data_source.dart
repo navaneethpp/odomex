@@ -54,6 +54,15 @@ abstract class AppSettingsLocalDataSource {
 
   /// Persists Auto-fill Current Odometer setting.
   Future<void> saveAutoFillCurrentOdometer(bool enabled);
+
+  /// Returns the list of custom insurance providers.
+  List<String> getCustomInsuranceProviders();
+
+  /// Persists the list of custom insurance providers.
+  Future<void> saveCustomInsuranceProviders(List<String> providers);
+
+  /// Adds a single custom insurance provider and persists the updated list.
+  Future<void> addCustomInsuranceProvider(String provider);
 }
 
 /// Hive CE implementation of [AppSettingsLocalDataSource].
@@ -79,6 +88,8 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
   static const String _privacyPolicyAcceptedVersionKey =
       'privacy_policy_accepted_version';
   static const String _autoFillOdometerKey = 'auto_fill_current_odometer';
+  static const String _customInsuranceProvidersKey =
+      'custom_insurance_providers';
 
   @override
   AppThemeMode getThemeMode() {
@@ -235,6 +246,41 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
     final box = _settingsBox;
     if (box != null) {
       await box.put(_autoFillOdometerKey, enabled);
+    }
+  }
+
+  @override
+  List<String> getCustomInsuranceProviders() {
+    final box = _settingsBox;
+    if (box != null) {
+      final val = box.get(_customInsuranceProvidersKey);
+      if (val is List) {
+        return val.cast<String>();
+      }
+    }
+    return [];
+  }
+
+  @override
+  Future<void> saveCustomInsuranceProviders(List<String> providers) async {
+    final box = _settingsBox;
+    if (box != null) {
+      await box.put(_customInsuranceProvidersKey, providers);
+    }
+  }
+
+  @override
+  Future<void> addCustomInsuranceProvider(String provider) async {
+    final trimmedProvider = provider.trim();
+    if (trimmedProvider.isEmpty) return;
+
+    final currentProviders = getCustomInsuranceProviders();
+    final exists = currentProviders.any(
+        (p) => p.toLowerCase() == trimmedProvider.toLowerCase());
+    if (!exists) {
+      currentProviders.add(trimmedProvider);
+      currentProviders.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      await saveCustomInsuranceProviders(currentProviders);
     }
   }
 }

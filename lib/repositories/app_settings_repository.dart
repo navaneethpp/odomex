@@ -74,4 +74,16 @@ class AppSettingsRepository {
   /// Persists Auto-fill Current Odometer setting.
   Future<void> saveAutoFillCurrentOdometer(bool enabled) =>
       localDataSource.saveAutoFillCurrentOdometer(enabled);
+
+  /// Returns the list of custom insurance providers.
+  List<String> getCustomInsuranceProviders() =>
+      localDataSource.getCustomInsuranceProviders();
+
+  /// Persists the list of custom insurance providers.
+  Future<void> saveCustomInsuranceProviders(List<String> providers) =>
+      localDataSource.saveCustomInsuranceProviders(providers);
+
+  /// Adds a single custom insurance provider and persists the updated list.
+  Future<void> addCustomInsuranceProvider(String provider) =>
+      localDataSource.addCustomInsuranceProvider(provider);
 }

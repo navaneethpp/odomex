@@ -12,6 +12,7 @@ import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/calculated_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/date_picker_field.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/form_section_card.dart';
+import 'package:odomex/screens/AddVehicleScreen/widgets/insurance_provider_selector_sheet.dart';
 import 'package:odomex/screens/AddVehicleScreen/widgets/searchable_brand_picker.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
@@ -638,20 +639,37 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       title: 'Insurance (Optional)',
       children: [
         // Insurance Provider
-        TextFormField(
-          controller: _insuranceProviderController,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: active
-                ? 'Insurance Provider *'
-                : 'Insurance Provider',
-            hintText: 'e.g. New India Assurance',
-          ),
-          onChanged: (_) => setState(() {}),
-          validator: (v) {
-            if (!_hasAnyInsuranceInput) return null;
-            return validateInsuranceProvider(v);
+        GestureDetector(
+          onTap: () async {
+            FocusScope.of(context).unfocus();
+            final selected = await InsuranceProviderSelectorSheet.show(
+              context,
+              _insuranceProviderController.text.trim().isEmpty
+                  ? null
+                  : _insuranceProviderController.text.trim(),
+            );
+            if (selected != null) {
+              setState(() {
+                _insuranceProviderController.text = selected;
+              });
+            }
           },
+          child: AbsorbPointer(
+            child: TextFormField(
+              controller: _insuranceProviderController,
+              decoration: InputDecoration(
+                labelText: active
+                    ? 'Insurance Provider *'
+                    : 'Insurance Provider',
+                hintText: 'Select insurance provider',
+                suffixIcon: const Icon(Icons.arrow_drop_down),
+              ),
+              validator: (v) {
+                if (!_hasAnyInsuranceInput) return null;
+                return validateInsuranceProvider(v);
+              },
+            ),
+          ),
         ),
 
         // Policy Number

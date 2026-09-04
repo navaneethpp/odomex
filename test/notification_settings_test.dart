@@ -72,6 +72,15 @@ class FakeAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   Future<void> savePrivacyPolicyAcceptedVersion(String version) async {}
+
+  @override
+  List<String> getCustomInsuranceProviders() => [];
+
+  @override
+  Future<void> saveCustomInsuranceProviders(List<String> providers) async {}
+
+  @override
+  Future<void> addCustomInsuranceProvider(String provider) async {}
 }
 
 class FakeNotificationService implements NotificationService {
@@ -226,7 +235,7 @@ class FakeVehicleReminderScheduler extends VehicleReminderScheduler {
 void main() {
   group('NotificationConstants Tests', () {
     test('verifies constant IDs, channel definitions, and daily activity constants', () {
-      expect(NotificationConstants.remindersChannelId, 'odomex_reminders');
+      expect(NotificationConstants.remindersChannelId, 'odomex_reminders_v2');
       expect(NotificationConstants.remindersChannelName, 'Odomex Notifications');
       expect(NotificationConstants.testNotificationId, 1000);
       expect(NotificationConstants.dailyActivityNotificationId, 1100);
@@ -241,7 +250,7 @@ void main() {
         NotificationConstants.dailyActivityBody,
         "Don't forget to record today's vehicle activity.",
       );
-      expect(NotificationConstants.androidNotificationIcon, '@drawable/ic_notification');
+      expect(NotificationConstants.androidNotificationIcon, 'ic_notification');
       expect(NotificationConstants.payloadTypeTest, 'test_notification');
       expect(NotificationConstants.payloadTypeDailyActivity, 'daily_activity');
     });
