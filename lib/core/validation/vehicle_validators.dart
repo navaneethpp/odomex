@@ -223,13 +223,31 @@ String? validatePurchaseDate(
 }
 
 // ─────────────────────────────────────────────
+// SHARED DATE VALIDATORS
+// ─────────────────────────────────────────────
+
+/// Checks that a date is not in the future.
+/// Uses the device's local calendar date.
+String? validateNotFutureDate(DateTime? date, String fieldName) {
+  if (date == null) return null;
+  final now = DateTime.now();
+  final todayOnly = DateTime(now.year, now.month, now.day);
+  final dateOnly = DateTime(date.year, date.month, date.day);
+  
+  if (dateOnly.isAfter(todayOnly)) {
+    return '$fieldName cannot be in the future.';
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────
 // INSURANCE VALIDATORS
 // ─────────────────────────────────────────────
 
 /// Insurance provider name.
 String? validateInsuranceProvider(String? value) {
   final v = value?.trim() ?? '';
-  if (v.isEmpty) return 'Insurance provider is required.';
+  if (v.isEmpty) return null;
   if (v.length < kInsuranceProviderMinLength) {
     return 'Provider name must be at least $kInsuranceProviderMinLength characters.';
   }
@@ -242,7 +260,7 @@ String? validateInsuranceProvider(String? value) {
 /// Insurance policy number.
 String? validatePolicyNumber(String? value) {
   final v = value?.trim() ?? '';
-  if (v.isEmpty) return 'Policy number is required.';
+  if (v.isEmpty) return null;
   if (v.length < kPolicyNumberMinLength) {
     return 'Policy number must be at least $kPolicyNumberMinLength characters.';
   }
@@ -268,7 +286,7 @@ String? validateInsuranceDates(DateTime? startDate, DateTime? endDate) {
 /// PUC certificate number.
 String? validatePucCertificate(String? value) {
   final v = value?.trim() ?? '';
-  if (v.isEmpty) return 'PUC certificate number is required.';
+  if (v.isEmpty) return null;
   if (v.length < kPucCertMinLength) {
     return 'Certificate number must be at least $kPucCertMinLength characters.';
   }

@@ -474,10 +474,17 @@ class Vehicle {
   }
 
   /// Whether this vehicle has insurance information recorded.
-  bool get hasInsurance => insuranceProvider != null;
+  bool get hasInsurance =>
+      insuranceProvider != null ||
+      insurancePolicyNumber != null ||
+      insuranceStartDate != null ||
+      insuranceEndDate != null;
 
   /// Whether this vehicle has PUC information recorded.
-  bool get hasPuc => pucCertificateNumber != null;
+  bool get hasPuc =>
+      pucCertificateNumber != null ||
+      pucStartDate != null ||
+      pucEndDate != null;
 
   /// Whether this vehicle has oil change information recorded.
   bool get hasOilChange => lastOilChangeDate != null;

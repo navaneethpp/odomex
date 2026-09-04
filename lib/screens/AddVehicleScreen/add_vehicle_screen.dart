@@ -601,7 +601,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         DatePickerField(
           labelText: 'Purchase Date *',
           selectedDate: _purchaseDate,
-          lastDate: DateTime.now(),
+          disableFutureDates: true,
           onDateSelected: (date) => setState(() => _purchaseDate = date),
           validator: (date) => validatePurchaseDate(
             date,
@@ -633,7 +633,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   // ─────────────────────────────────────────────
 
   Widget _buildInsuranceSection() {
-    final active = _hasAnyInsuranceInput;
+
 
     return FormSectionCard(
       title: 'Insurance (Optional)',
@@ -658,9 +658,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             child: TextFormField(
               controller: _insuranceProviderController,
               decoration: InputDecoration(
-                labelText: active
-                    ? 'Insurance Provider *'
-                    : 'Insurance Provider',
+                labelText: 'Insurance Provider',
                 hintText: 'Select insurance provider',
                 suffixIcon: const Icon(Icons.arrow_drop_down),
               ),
@@ -675,8 +673,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         // Policy Number
         TextFormField(
           controller: _insurancePolicyNumberController,
-          decoration: InputDecoration(
-            labelText: active ? 'Policy Number *' : 'Policy Number',
+          decoration: const InputDecoration(
+            labelText: 'Policy Number',
             hintText: 'e.g. POL-1234567890',
           ),
           onChanged: (_) => setState(() {}),
@@ -688,19 +686,19 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
         // Start Date
         DatePickerField(
-          labelText: active ? 'Start Date *' : 'Start Date',
+          labelText: 'Start Date',
           selectedDate: _insuranceStartDate,
           onDateSelected: _onInsuranceStartDateSelected,
+          disableFutureDates: true,
           validator: (date) {
             if (!_hasAnyInsuranceInput) return null;
-            if (date == null) return 'Insurance start date is required.';
-            return null;
+            return validateNotFutureDate(date, 'Insurance start date');
           },
         ),
 
         // End Date — with cross-field validation
         DatePickerField(
-          labelText: active ? 'End Date *' : 'End Date',
+          labelText: 'End Date',
           selectedDate: _insuranceEndDate,
           firstDate: _insuranceStartDate,
           initialDate: _insuranceEndDate ??
@@ -716,7 +714,6 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           hintText: 'Auto-set to 1 year after start date',
           validator: (date) {
             if (!_hasAnyInsuranceInput) return null;
-            if (date == null) return 'Insurance end date is required.';
             return validateInsuranceDates(_insuranceStartDate, date);
           },
         ),
@@ -729,7 +726,6 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   // ─────────────────────────────────────────────
 
   Widget _buildPucSection() {
-    final active = _hasAnyPucInput;
     final year = _parsedYear;
     final hintSuffix =
         year > 0 ? ' (${pucValidityDescription(year)})' : '';
@@ -740,10 +736,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         // Certificate Number
         TextFormField(
           controller: _pucCertificateController,
-          decoration: InputDecoration(
-            labelText: active
-                ? 'Certificate Number *'
-                : 'Certificate Number',
+          decoration: const InputDecoration(
+            labelText: 'Certificate Number',
             hintText: 'e.g. PUC-123456',
           ),
           onChanged: (_) => setState(() {}),
@@ -753,28 +747,26 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           },
         ),
 
-        // Start Date
         DatePickerField(
-          labelText: active ? 'Start Date *' : 'Start Date',
+          labelText: 'Start Date',
           selectedDate: _pucStartDate,
           onDateSelected: _onPucStartDateSelected,
+          disableFutureDates: true,
           validator: (date) {
             if (!_hasAnyPucInput) return null;
-            if (date == null) return 'PUC start date is required.';
-            return null;
+            return validateNotFutureDate(date, 'PUC start date');
           },
         ),
 
         // End Date — auto-calculated, cross-field validated
         DatePickerField(
-          labelText: active ? 'End Date *' : 'End Date',
+          labelText: 'End Date',
           selectedDate: _pucEndDate,
           firstDate: _pucStartDate,
           onDateSelected: (date) => setState(() => _pucEndDate = date),
           hintText: 'Auto-calculated$hintSuffix',
           validator: (date) {
             if (!_hasAnyPucInput) return null;
-            if (date == null) return 'PUC end date is required.';
             return validatePucDates(_pucStartDate, date);
           },
         ),
@@ -845,12 +837,13 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
               ? 'Last Oil Change Date *'
               : 'Last Oil Change Date',
           selectedDate: _lastOilChangeDate,
-          lastDate: DateTime.now(),
+          disableFutureDates: true,
           onDateSelected: (date) =>
               setState(() => _lastOilChangeDate = date),
           validator: (date) {
             if (!_hasAnyOilChangeInput) return null;
-            return validateLastOilChangeDate(date);
+            if (date == null) return 'Last oil change date is required.';
+            return validateNotFutureDate(date, 'Last oil change date');
           },
         ),
 

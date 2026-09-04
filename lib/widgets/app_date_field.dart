@@ -58,13 +58,21 @@ class _AppDateFieldState extends State<AppDateField> {
 
   Future<void> _openPicker(BuildContext context) async {
     final now = DateTime.now();
+    DateTime effectiveLastDate = widget.lastDate ?? DateTime(now.year + 10);
+
+    if (widget.disableFutureDates) {
+      effectiveLastDate = now;
+      final initial = widget.initialDate ?? widget.selectedDate;
+      if (initial != null && initial.isAfter(effectiveLastDate)) {
+        effectiveLastDate = initial;
+      }
+    }
+
     final picked = await showDatePicker(
       context: context,
       initialDate: widget.initialDate ?? widget.selectedDate ?? now,
       firstDate: widget.firstDate ?? DateTime(1980),
-      lastDate: widget.disableFutureDates
-          ? now
-          : widget.lastDate ?? DateTime(now.year + 10),
+      lastDate: effectiveLastDate,
     );
     if (picked != null) {
       widget.onDateSelected(picked);
