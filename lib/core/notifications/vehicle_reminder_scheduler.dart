@@ -140,6 +140,8 @@ class VehicleReminderScheduler {
     required String vehicleName,
     required int daysBeforeExpiry,
   }) async {
+    if (!vehicle.isPucApplicable) return;
+
     final pucEndDate = vehicle.pucEndDate;
     if (pucEndDate == null) {
       debugPrint('[VehicleReminders] PUC: No end date for $vehicleName → skipping');
@@ -255,6 +257,8 @@ class VehicleReminderScheduler {
     required String vehicleName,
     required int thresholdKm,
   }) async {
+    if (!vehicle.isOilChangeApplicable) return;
+
     final nextOilChangeOdometer = vehicle.nextOilChangeOdometer;
     if (nextOilChangeOdometer == null) {
       debugPrint('[VehicleReminders] OilChange: No next oil change odometer for $vehicleName → skipping');

@@ -244,7 +244,8 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
                       if (vehicle?.powertrainType == PowertrainType.plugInHybrid)
                         VehicleRecordType.charging,
                       VehicleRecordType.service,
-                      VehicleRecordType.oilChange,
+                      if (vehicle?.isOilChangeApplicable ?? true)
+                        VehicleRecordType.oilChange,
                     ];
                     return RecordTypeSelector(
                       selected: _selectedType,

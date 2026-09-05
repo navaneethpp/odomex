@@ -80,7 +80,7 @@ class MaintenanceCard extends StatelessWidget {
         const SizedBox(height: AppSizes.spacingMd),
 
         // Next oil change
-        if (next != null) ...[
+        if (next != null && vehicle.isOilChangeApplicable) ...[
           _DetailRow(
             label: 'Next at',
             value: '${_numFmt.format(next)} km',
@@ -113,7 +113,7 @@ class MaintenanceCard extends StatelessWidget {
             secondary: _relativeDate(vehicle.lastOilChangeDate),
           ),
 
-        if (vehicle.oilChangeInterval != null) ...[
+        if (vehicle.oilChangeInterval != null && vehicle.isOilChangeApplicable) ...[
           const SizedBox(height: AppSizes.spacingSm),
           _DetailRow(
             label: 'Interval',

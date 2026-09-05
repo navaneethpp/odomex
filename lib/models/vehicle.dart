@@ -539,6 +539,14 @@ class Vehicle {
       pucStartDate != null ||
       pucEndDate != null;
 
+  /// Whether Pollution Under Control (PUC) certification is applicable to this vehicle.
+  /// Defaults to true for backwards compatibility if powertrain is not set.
+  bool get isPucApplicable => powertrainType?.isPucApplicable ?? true;
+
+  /// Whether conventional engine oil changes are applicable to this vehicle.
+  /// Defaults to true for backwards compatibility if powertrain is not set.
+  bool get isOilChangeApplicable => powertrainType?.isOilChangeApplicable ?? true;
+
   /// Whether this vehicle has oil change information recorded.
   bool get hasOilChange => lastOilChangeDate != null;
 

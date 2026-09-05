@@ -41,4 +41,16 @@ extension PowertrainTypeExtension on PowertrainType {
         return 'Pure electric motor power';
     }
   }
+
+  /// Whether Pollution Under Control (PUC) certification is applicable.
+  /// Electric Vehicles (EVs) do not require PUC.
+  bool get isPucApplicable {
+    return this != PowertrainType.ev;
+  }
+
+  /// Whether conventional engine oil changes are applicable.
+  /// Pure Electric Vehicles (EVs) do not have conventional engine oil.
+  bool get isOilChangeApplicable {
+    return this != PowertrainType.ev;
+  }
 }

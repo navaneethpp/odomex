@@ -60,22 +60,24 @@ class VehicleDetailsScreen extends ConsumerWidget {
     final alerts = <VehicleAlert>[];
 
     // Oil change
-    final oilStatus = calculateOilChangeStatus(vehicle);
-    final next = vehicle.nextOilChangeOdometer;
-    if (oilStatus == MaintenanceStatus.due) {
-      alerts.add(const VehicleAlert(
-        icon: Icons.oil_barrel_outlined,
-        title: 'Oil change is overdue',
-        subtitle: 'Current reading has passed the service interval.',
-        severity: AlertSeverity.critical,
-      ));
-    } else if (oilStatus == MaintenanceStatus.dueSoon && next != null) {
-      final remaining = next - vehicle.odometerReading;
-      alerts.add(VehicleAlert(
-        icon: Icons.oil_barrel_outlined,
-        title: 'Oil change due soon',
-        subtitle: '${_numFmt.format(remaining)} km remaining.',
-      ));
+    if (vehicle.isOilChangeApplicable) {
+      final oilStatus = calculateOilChangeStatus(vehicle);
+      final next = vehicle.nextOilChangeOdometer;
+      if (oilStatus == MaintenanceStatus.due) {
+        alerts.add(const VehicleAlert(
+          icon: Icons.oil_barrel_outlined,
+          title: 'Oil change is overdue',
+          subtitle: 'Current reading has passed the service interval.',
+          severity: AlertSeverity.critical,
+        ));
+      } else if (oilStatus == MaintenanceStatus.dueSoon && next != null) {
+        final remaining = next - vehicle.odometerReading;
+        alerts.add(VehicleAlert(
+          icon: Icons.oil_barrel_outlined,
+          title: 'Oil change due soon',
+          subtitle: '${_numFmt.format(remaining)} km remaining.',
+        ));
+      }
     }
 
     // Service
@@ -119,7 +121,7 @@ class VehicleDetailsScreen extends ConsumerWidget {
     }
 
     // PUC
-    if (vehicle.hasPuc) {
+    if (vehicle.hasPuc && vehicle.isPucApplicable) {
       final pucStatus = calculateDocumentStatus(vehicle.pucEndDate);
       if (pucStatus == DocumentStatus.expired) {
         alerts.add(VehicleAlert(

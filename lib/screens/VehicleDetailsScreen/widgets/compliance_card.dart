@@ -42,20 +42,22 @@ class ComplianceCard extends StatelessWidget {
               expiryDate: vehicle.insuranceEndDate,
             ),
 
-            Divider(height: AppSizes.spacingXl),
+            if (vehicle.isPucApplicable) ...[
+              Divider(height: AppSizes.spacingXl),
 
-            // PUC
-            _DocumentBlock(
-              icon: Icons.verified_outlined,
-              title: 'PUC',
-              status: pucStatus,
-              provider: null,
-              policyNumber: vehicle.pucCertificateNumber,
-              policyNumberLabel: 'Certificate',
-              startDate: _fmtDate(vehicle.pucStartDate),
-              endDate: _fmtDate(vehicle.pucEndDate),
-              expiryDate: vehicle.pucEndDate,
-            ),
+              // PUC
+              _DocumentBlock(
+                icon: Icons.verified_outlined,
+                title: 'PUC',
+                status: pucStatus,
+                provider: null,
+                policyNumber: vehicle.pucCertificateNumber,
+                policyNumberLabel: 'Certificate',
+                startDate: _fmtDate(vehicle.pucStartDate),
+                endDate: _fmtDate(vehicle.pucEndDate),
+                expiryDate: vehicle.pucEndDate,
+              ),
+            ],
           ],
         ),
       ),
