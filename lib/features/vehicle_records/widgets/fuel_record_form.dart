@@ -11,15 +11,6 @@ import 'package:odomex/widgets/app_date_field.dart';
 
 /// Form for logging a fuel refill with smart automatic total cost calculation
 /// and smart odometer autofill.
-///
-/// Fields:
-///   - Fuel quantity (L, required, > 0)
-///   - Price per litre (₹/L, required, > 0)
-///   - Total cost (₹, automatically calculated as quantity × price per litre)
-///   - Odometer reading (required, with "Use Latest" shortcut)
-///   - Date (required, no future dates)
-///   - Fuel station (optional, max 100 chars)
-///   - Notes (optional, max 500 chars)
 class FuelRecordForm extends StatefulWidget {
   const FuelRecordForm({
     super.key,
@@ -43,12 +34,20 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   final _formKey = GlobalKey<FormState>();
   final _quantityController = TextEditingController();
   final _priceController = TextEditingController();
+  final _amountController = TextEditingController();
   final _odometerController = TextEditingController();
   DateTime? _date = DateTime.now();
   final _stationController = TextEditingController();
   final _notesController = TextEditingController();
 
-  double? _calculatedTotalCost;
+  final _qtyFocus = FocusNode();
+  final _priceFocus = FocusNode();
+  final _amountFocus = FocusNode();
+
+  bool _isCalculating = false;
+  String? _calculatedField;
+  final List<String> _focusHistory = [];
+  int _clearCount = 0;
 
   @override
   void initState() {
@@ -57,61 +56,174 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
       final rec = widget.initialRecord!;
       _quantityController.text = rec.quantity.toString();
       _priceController.text = rec.costPerLitre.toStringAsFixed(2);
+      _amountController.text = rec.cost.toStringAsFixed(2);
       if (rec.odometerReading != null) {
         _odometerController.text = rec.odometerReading.toString();
       }
       _date = rec.date;
       if (rec.station != null) _stationController.text = rec.station!;
       if (rec.notes != null) _notesController.text = rec.notes!;
-      _calculatedTotalCost = rec.cost;
     } else if (widget.defaultOdometer != null) {
       _odometerController.text = widget.defaultOdometer!;
     }
     
-    _quantityController.addListener(_onCostInputsChanged);
-    _priceController.addListener(_onCostInputsChanged);
+    _quantityController.addListener(_onInputChanged);
+    _priceController.addListener(_onInputChanged);
+    _amountController.addListener(_onInputChanged);
+
+    _qtyFocus.addListener(() => _onFocusChange('qty', _qtyFocus.hasFocus));
+    _priceFocus.addListener(() => _onFocusChange('price', _priceFocus.hasFocus));
+    _amountFocus.addListener(() => _onFocusChange('amount', _amountFocus.hasFocus));
+  }
+
+  void _onFocusChange(String field, bool hasFocus) {
+    if (hasFocus) {
+      _focusHistory.remove(field);
+      _focusHistory.add(field);
+    }
   }
 
   @override
   void dispose() {
-    _quantityController.removeListener(_onCostInputsChanged);
-    _priceController.removeListener(_onCostInputsChanged);
+    _quantityController.removeListener(_onInputChanged);
+    _priceController.removeListener(_onInputChanged);
+    _amountController.removeListener(_onInputChanged);
     _quantityController.dispose();
     _priceController.dispose();
+    _amountController.dispose();
+    _qtyFocus.dispose();
+    _priceFocus.dispose();
+    _amountFocus.dispose();
     _odometerController.dispose();
     _stationController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
-  void _onCostInputsChanged() {
-    final qty = double.tryParse(_quantityController.text.trim());
-    final price = double.tryParse(_priceController.text.trim());
+  void _onInputChanged() {
+    if (_isCalculating) return;
 
-    final total = FuelCostCalculator.calculateTotalCost(
-      quantity: qty,
-      pricePerUnit: price,
-    );
+    final qtyStr = _quantityController.text.trim();
+    final priceStr = _priceController.text.trim();
+    final amtStr = _amountController.text.trim();
 
-    if (total != _calculatedTotalCost) {
+    int filled = (qtyStr.isNotEmpty ? 1 : 0) +
+        (priceStr.isNotEmpty ? 1 : 0) +
+        (amtStr.isNotEmpty ? 1 : 0);
+
+    if (filled < 2) {
+      if (_calculatedField != null) {
+        setState(() => _calculatedField = null);
+      }
+      return;
+    }
+
+    _isCalculating = true;
+    String? newCalculatedField;
+
+    String target;
+    if (qtyStr.isEmpty) {
+      target = 'qty';
+    } else if (priceStr.isEmpty) {
+      target = 'price';
+    } else if (amtStr.isEmpty) {
+      target = 'amount';
+    } else {
+      target = ['qty', 'price', 'amount'].firstWhere(
+        (f) => !_focusHistory.reversed.take(2).contains(f), 
+        orElse: () => 'amount');
+    }
+
+    final qty = double.tryParse(qtyStr);
+    final price = double.tryParse(priceStr);
+    final amt = double.tryParse(amtStr);
+
+    if (target == 'amount' && qty != null && price != null) {
+      final a = FuelCostCalculator.calculateTotalCost(quantity: qty, pricePerUnit: price);
+      if (a != null) {
+        _amountController.text = a.toStringAsFixed(2);
+        newCalculatedField = 'amount';
+      }
+    } else if (target == 'qty' && amt != null && price != null) {
+      final q = FuelCostCalculator.calculateQuantity(totalCost: amt, pricePerUnit: price);
+      if (q != null) {
+        String formattedQ = q.toStringAsFixed(3);
+        if (formattedQ.contains('.')) {
+          formattedQ = formattedQ.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+        }
+        _quantityController.text = formattedQ;
+        newCalculatedField = 'qty';
+      }
+    } else if (target == 'price' && amt != null && qty != null) {
+      final p = FuelCostCalculator.calculatePricePerUnit(totalCost: amt, quantity: qty);
+      if (p != null) {
+        _priceController.text = p.toStringAsFixed(2);
+        newCalculatedField = 'price';
+      }
+    }
+
+    if (_calculatedField != newCalculatedField) {
       setState(() {
-        _calculatedTotalCost = total;
+        _calculatedField = newCalculatedField;
       });
     }
+    
+    _isCalculating = false;
+  }
+
+  void _clearFuelFields() {
+    if (_quantityController.text.isEmpty &&
+        _priceController.text.isEmpty &&
+        _amountController.text.isEmpty) {
+      return;
+    }
+
+    _isCalculating = true;
+    _quantityController.clear();
+    _priceController.clear();
+    _amountController.clear();
+
+    setState(() {
+      _calculatedField = null;
+      _focusHistory.clear();
+      _clearCount++;
+    });
+
+    Future.microtask(() => _isCalculating = false);
+  }
+
+  String? _validateFuelField(String? value, String? Function(String?) defaultValidator) {
+    final emptyCount = (_quantityController.text.trim().isEmpty ? 1 : 0) +
+                       (_priceController.text.trim().isEmpty ? 1 : 0) +
+                       (_amountController.text.trim().isEmpty ? 1 : 0);
+    if (emptyCount >= 2 && value?.trim().isEmpty == true) {
+      return emptyCount == 3 
+          ? 'Enter at least two fuel details.' 
+          : 'Enter at least two fuel details to calculate the missing value.';
+    }
+    return defaultValidator(value);
   }
 
   @override
   FuelRecord? buildRecord() {
     if (!_formKey.currentState!.validate()) return null;
 
-    final quantity = double.parse(_quantityController.text.trim());
-    final price = double.parse(_priceController.text.trim());
-    final totalCost = FuelCostCalculator.calculateTotalCost(
-      quantity: quantity,
-      pricePerUnit: price,
-    );
+    final quantity = double.tryParse(_quantityController.text.trim());
+    final price = double.tryParse(_priceController.text.trim());
+    final totalCost = double.tryParse(_amountController.text.trim());
 
-    if (totalCost == null) return null;
+    if (quantity == null || price == null || totalCost == null) return null;
+
+    if (!FuelCostCalculator.areValuesConsistent(
+        quantity: quantity, pricePerUnit: price, totalCost: totalCost)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Fuel details don't match. Quantity × fuel price must equal the amount paid."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return null;
+    }
 
     final odometerText = _odometerController.text.trim();
     final parsedOdo = odometerText.isNotEmpty ? double.tryParse(odometerText) : null;
@@ -149,8 +261,6 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
         ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
         : 'e.g. 25100';
 
-    final hasCalculatedCost = _calculatedTotalCost != null;
-
     return Form(
       key: _formKey,
       child: Column(
@@ -162,19 +272,25 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
             children: [
               Expanded(
                 child: TextFormField(
+                  key: ValueKey('qty_$_clearCount'),
                   controller: _quantityController,
+                  focusNode: _qtyFocus,
                   autofocus: true,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Fuel Quantity *',
                     suffixText: 'L',
                     hintText: 'e.g. 5.5',
+                    helperText: _calculatedField == 'qty' ? 'Calculated automatically' : null,
+                    helperStyle: _calculatedField == 'qty' 
+                        ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
+                        : null,
                   ),
-                  validator: validateFuelQuantity,
+                  validator: (v) => _validateFuelField(v, validateFuelQuantity),
                 ),
               ),
 
@@ -182,19 +298,25 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
               Expanded(
                 child: TextFormField(
+                  key: ValueKey('price_$_clearCount'),
                   controller: _priceController,
+                  focusNode: _priceFocus,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Price per Litre *',
                     prefixText: '${AppConstants.currencySymbol} ',
                     suffixText: '/L',
                     hintText: 'e.g. 105.50',
+                    helperText: _calculatedField == 'price' ? 'Calculated automatically' : null,
+                    helperStyle: _calculatedField == 'price' 
+                        ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
+                        : null,
                   ),
-                  validator: validateFuelPrice,
+                  validator: (v) => _validateFuelField(v, validateFuelPrice),
                 ),
               ),
             ],
@@ -202,76 +324,39 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
           const SizedBox(height: AppSizes.spacingMd),
 
-          // ── Live Total Cost Display Card ──
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSizes.paddingMd),
-            decoration: BoxDecoration(
-              color: hasCalculatedCost
-                  ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              border: Border.all(
-                color: hasCalculatedCost
-                  ? colorScheme.primary.withValues(alpha: 0.3)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
+          // ── Amount Paid ──
+          TextFormField(
+            key: ValueKey('amount_$_clearCount'),
+            controller: _amountController,
+            focusNode: _amountFocus,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Amount Paid *',
+              prefixText: '${AppConstants.currencySymbol} ',
+              hintText: 'e.g. 2110.00',
+              helperText: _calculatedField == 'amount' ? 'Calculated automatically' : null,
+              helperStyle: _calculatedField == 'amount' 
+                  ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
+                  : null,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: hasCalculatedCost
-                        ? colorScheme.primaryContainer
-                        : colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.payments_outlined,
-                    size: AppSizes.iconMd,
-                    color: hasCalculatedCost
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                  ),
+            validator: (v) => _validateFuelField(v, validateFuelCost),
+          ),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: Semantics(
+              label: 'Clear fuel calculation fields',
+              child: TextButton.icon(
+                onPressed: _clearFuelFields,
+                icon: const Icon(Icons.clear_all, size: 18),
+                label: const Text('Clear'),
+                style: TextButton.styleFrom(
+                  foregroundColor: colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: AppSizes.spacingMd),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Total Fuel Cost',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        FuelCostCalculator.formatCost(_calculatedTotalCost),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: hasCalculatedCost
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      if (hasCalculatedCost) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '${_quantityController.text.trim()} L × ${AppConstants.currencySymbol}${_priceController.text.trim()}/L',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
 

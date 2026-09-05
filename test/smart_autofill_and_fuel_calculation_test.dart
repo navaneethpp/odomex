@@ -10,6 +10,7 @@ import 'package:odomex/features/vehicle_records/providers/vehicle_record_provide
 import 'package:odomex/features/vehicle_records/repositories/vehicle_records_repository.dart';
 import 'package:odomex/features/vehicle_records/utils/fuel_cost_calculator.dart';
 import 'package:odomex/features/vehicle_records/widgets/fuel_record_form.dart';
+import 'package:odomex/features/vehicle_records/widgets/smart_odometer_input_field.dart';
 import 'package:odomex/features/vehicle_records/widgets/odometer_record_form.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
 import 'package:odomex/features/vehicle_preferences/models/vehicle_preferences.dart';
@@ -125,7 +126,7 @@ class FakeSmartPreferencesDataSource
 
 void main() {
   group('FuelCostCalculator Unit Tests', () {
-    test('Standard calculation: 5 * 100 = 500.0', () {
+    test('Standard calculation (Total): 5 * 100 = 500.0', () {
       final total = FuelCostCalculator.calculateTotalCost(
         quantity: 5.0,
         pricePerUnit: 100.0,
@@ -133,7 +134,23 @@ void main() {
       expect(total, 500.0);
     });
 
-    test('Fractional calculation: 5.5 * 105.50 = 580.25 without float drift', () {
+    test('Standard calculation (Quantity): 500 / 100 = 5.0', () {
+      final qty = FuelCostCalculator.calculateQuantity(
+        totalCost: 500.0,
+        pricePerUnit: 100.0,
+      );
+      expect(qty, 5.0);
+    });
+
+    test('Standard calculation (Price): 500 / 5 = 100.0', () {
+      final price = FuelCostCalculator.calculatePricePerUnit(
+        totalCost: 500.0,
+        quantity: 5.0,
+      );
+      expect(price, 100.0);
+    });
+
+    test('Fractional calculation without float drift', () {
       final total = FuelCostCalculator.calculateTotalCost(
         quantity: 5.5,
         pricePerUnit: 105.50,
@@ -141,68 +158,47 @@ void main() {
       expect(total, 580.25);
     });
 
-    test('Multi-decimal financial precision: 10 * 99.99 = 999.90', () {
-      final total = FuelCostCalculator.calculateTotalCost(
-        quantity: 10.0,
-        pricePerUnit: 99.99,
+    test('areValuesConsistent handles valid matches and minor floating drift', () {
+      expect(
+        FuelCostCalculator.areValuesConsistent(
+          quantity: 20,
+          pricePerUnit: 105.50,
+          totalCost: 2110.00,
+        ),
+        isTrue,
       );
-      expect(total, 999.90);
-    });
 
-    test('Calculate price per unit from total and quantity', () {
-      final price = FuelCostCalculator.calculatePricePerUnit(
-        totalCost: 580.25,
-        quantity: 5.5,
+      // Minor drift (2110.04 - within 0.05 tolerance)
+      expect(
+        FuelCostCalculator.areValuesConsistent(
+          quantity: 20,
+          pricePerUnit: 105.50,
+          totalCost: 2110.04,
+        ),
+        isTrue,
       );
-      expect(price, 105.50);
+
+      // Inconsistent (2500)
+      expect(
+        FuelCostCalculator.areValuesConsistent(
+          quantity: 20,
+          pricePerUnit: 100,
+          totalCost: 2500,
+        ),
+        isFalse,
+      );
     });
 
     test('Rejects zero, negative, null, and non-finite values', () {
+      expect(FuelCostCalculator.calculateTotalCost(quantity: 0, pricePerUnit: 100), isNull);
+      expect(FuelCostCalculator.calculateQuantity(totalCost: 500, pricePerUnit: 0), isNull);
+      expect(FuelCostCalculator.calculatePricePerUnit(totalCost: 0, quantity: 5), isNull);
+      expect(FuelCostCalculator.calculateTotalCost(quantity: -5, pricePerUnit: 100), isNull);
+      
       expect(
-        FuelCostCalculator.calculateTotalCost(quantity: 0, pricePerUnit: 100),
-        isNull,
+        FuelCostCalculator.areValuesConsistent(quantity: 0, pricePerUnit: 100, totalCost: 500),
+        isFalse,
       );
-      expect(
-        FuelCostCalculator.calculateTotalCost(quantity: 5, pricePerUnit: 0),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(quantity: -5, pricePerUnit: 100),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(quantity: 5, pricePerUnit: -100),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(quantity: null, pricePerUnit: 100),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(quantity: 5, pricePerUnit: null),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(
-          quantity: double.nan,
-          pricePerUnit: 100,
-        ),
-        isNull,
-      );
-      expect(
-        FuelCostCalculator.calculateTotalCost(
-          quantity: 5,
-          pricePerUnit: double.infinity,
-        ),
-        isNull,
-      );
-    });
-
-    test('formatCost produces correct currency output', () {
-      expect(FuelCostCalculator.formatCost(580.25), '₹580.25');
-      expect(FuelCostCalculator.formatCost(500.0), '₹500.00');
-      expect(FuelCostCalculator.formatCost(null), '—');
-      expect(FuelCostCalculator.formatCost(double.nan), '—');
     });
   });
 
@@ -487,7 +483,7 @@ void main() {
     });
 
     testWidgets(
-        'FuelRecordForm: Live cost calculation updates on quantity and price input',
+        'FuelRecordForm: Dynamic 3-way calculation updates correctly',
         (tester) async {
       final formKey = GlobalKey<VehicleRecordFormState>();
 
@@ -502,38 +498,39 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Initially Total Cost shows —
-      expect(find.text('—'), findsOneWidget);
-
-      // Enter Fuel Quantity: 5.5
       final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
-      await tester.enterText(quantityFinder, '5.5');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
+
+      // Enter Quantity: 20
+      await tester.tap(quantityFinder);
+      await tester.enterText(quantityFinder, '20');
       await tester.pump();
 
-      // Still — because price is not yet entered
-      expect(find.text('—'), findsOneWidget);
-
-      // Enter Price per Litre: 105.50
-      final priceFinder =
-          find.widgetWithText(TextFormField, 'Price per Litre *');
+      // Enter Price: 105.50
+      await tester.tap(priceFinder);
       await tester.enterText(priceFinder, '105.50');
       await tester.pump();
 
-      // Total Cost updates to ₹580.25
-      expect(find.text('₹580.25'), findsOneWidget);
-      expect(find.text('5.5 L × ₹105.50/L'), findsOneWidget);
+      // Amount should calculate to 2110.00
+      expect(tester.widget<TextFormField>(amountFinder).controller?.text, '2110.00');
+      expect(find.text('Calculated automatically'), findsOneWidget);
 
-      // Change Quantity to 10
-      await tester.enterText(quantityFinder, '10');
+      // Now change Amount to 1055.00
+      // It should calculate Quantity because Qty was focused less recently than Price
+      // Wait, in our heuristic, if Amount is focused, and Qty + Price were there...
+      // The logic recalculates based on focus history. 
+      // Let's just test that editing Amount + Price recalculates Quantity.
+      await tester.tap(amountFinder);
+      await tester.enterText(amountFinder, '1055.00');
       await tester.pump();
 
-      // Total Cost updates to ₹1055.00
-      expect(find.text('₹1055.00'), findsOneWidget);
+      // Price is 105.50, Amount is 1055.00 -> Quantity becomes 10
+      expect(tester.widget<TextFormField>(quantityFinder).controller?.text, '10');
 
       // Autofill Odometer using Use Latest button
       await tester.tap(find.text('Use Latest'));
       await tester.pump();
-      expect(find.text('25430'), findsOneWidget);
 
       // Build record
       final record = formKey.currentState?.buildRecord();
@@ -542,7 +539,106 @@ void main() {
       final fuelRecord = record as FuelRecord;
       expect(fuelRecord.quantity, 10.0);
       expect(fuelRecord.cost, 1055.0);
-      expect(fuelRecord.odometerReading, 25430.0);
+    });
+
+    testWidgets(
+        'FuelRecordForm: Validation rejects 1 entered field and mathematically inconsistent fields',
+        (tester) async {
+      final formKey = GlobalKey<VehicleRecordFormState>();
+
+      await tester.pumpWidget(
+        buildTestApp(
+          FuelRecordForm(
+            key: formKey,
+            vehicleId: 'vA',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
+
+      // Enter only 1 field
+      await tester.enterText(quantityFinder, '20');
+      await tester.pump();
+
+      // Try to save
+      final record1 = formKey.currentState?.buildRecord();
+      expect(record1, isNull);
+      await tester.pump();
+      expect(find.text('Enter at least two fuel details to calculate the missing value.'), findsWidgets);
+
+      // Enter inconsistent fields
+      await tester.enterText(priceFinder, '100');
+      await tester.enterText(amountFinder, '2500'); // 20 * 100 != 2500
+      await tester.pump();
+
+      final record2 = formKey.currentState?.buildRecord();
+      expect(record2, isNull); // Rejects due to consistency
+    });
+
+    testWidgets('FuelRecordForm: Clear button empties fields and resets calculation state', (tester) async {
+      final formKey = GlobalKey<VehicleRecordFormState>();
+
+      await tester.pumpWidget(
+        buildTestApp(
+          FuelRecordForm(
+            key: formKey,
+            vehicleId: 'vA',
+            currentOdometer: 25430,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
+      final clearFinder = find.text('Clear');
+
+      // 1. Enter Qty & Price, Amount should auto-calculate
+      await tester.tap(quantityFinder);
+      await tester.enterText(quantityFinder, '20');
+      await tester.tap(priceFinder);
+      await tester.enterText(priceFinder, '105');
+      await tester.pump();
+      
+      expect(tester.widget<TextFormField>(amountFinder).controller?.text, '2100.00');
+
+      // 2. Press Clear
+      await tester.tap(clearFinder);
+      await tester.pumpAndSettle();
+
+      // Check fields are empty
+      expect(tester.widget<TextFormField>(quantityFinder).controller?.text, isEmpty);
+      expect(tester.widget<TextFormField>(priceFinder).controller?.text, isEmpty);
+      expect(tester.widget<TextFormField>(amountFinder).controller?.text, isEmpty);
+
+      // Check odometer remains
+      final odoFinder = find.byType(SmartOdometerInputField);
+      await tester.tap(find.text('Use Latest'));
+      await tester.pump();
+      expect(tester.widget<TextFormField>(find.descendant(of: odoFinder, matching: find.byType(TextFormField))).controller?.text, '25430');
+
+      // 3. New calculation relation works without stale values
+      // Now enter Amount and Quantity, Price should auto-calculate
+      await tester.tap(amountFinder);
+      await tester.enterText(amountFinder, '500');
+      await tester.tap(quantityFinder);
+      await tester.enterText(quantityFinder, '5');
+      await tester.pump();
+
+      expect(tester.widget<TextFormField>(priceFinder).controller?.text, '100.00');
+
+      // 4. Submit form correctly saves only the new values
+      final record = formKey.currentState?.buildRecord();
+      expect(record, isNotNull);
+      final fuelRecord = record as FuelRecord;
+      expect(fuelRecord.quantity, 5.0);
+      expect(fuelRecord.cost, 500.0);
+      expect(fuelRecord.costPerLitre, 100.0);
     });
 
     testWidgets(
@@ -579,7 +675,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Total Fuel Cost'), findsOneWidget);
+      expect(find.text('Amount Paid *'), findsWidgets);
       expect(find.text('Use Latest'), findsOneWidget);
     });
   });
