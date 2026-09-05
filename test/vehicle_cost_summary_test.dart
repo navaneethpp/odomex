@@ -413,6 +413,37 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('Tapping period label opens DatePicker', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            vehicleRecordRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: VehicleCostSummaryCard(vehicleId: 'veh_1'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Find the date label row, by looking for the calendar icon and tapping it
+      final calendarIcon = find.byIcon(Icons.calendar_today_outlined);
+      expect(calendarIcon, findsOneWidget);
+      
+      await tester.tap(calendarIcon);
+      await tester.pumpAndSettle();
+      
+      // Check if DatePicker dialog is opened by finding standard DatePicker text
+      expect(find.text('Select records date'), findsOneWidget);
+      
+      // Cancel the picker
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('renders responsively in dark theme at 360x640 without overflow',
         (tester) async {
       tester.view.physicalSize = const Size(360, 640);

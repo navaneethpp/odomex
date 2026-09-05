@@ -9,11 +9,32 @@ final costPeriodProvider =
   return CostPeriod.monthly;
 });
 
+class CostSelectedDateNotifier extends FamilyNotifier<DateTime, String> {
+  @override
+  DateTime build(String arg) {
+    return _clampToToday(DateTime.now());
+  }
+
+  void updateDate(DateTime date) {
+    state = _clampToToday(date);
+  }
+
+  DateTime _clampToToday(DateTime date) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final dateStart = DateTime(date.year, date.month, date.day);
+
+    if (dateStart.isAfter(todayStart)) {
+      return now;
+    }
+    return date;
+  }
+}
+
 /// Tracks the currently selected anchor date for a vehicle's cost summary navigation.
 final costSelectedDateProvider =
-    StateProvider.family<DateTime, String>((ref, vehicleId) {
-  return DateTime.now();
-});
+    NotifierProvider.family<CostSelectedDateNotifier, DateTime, String>(
+        CostSelectedDateNotifier.new);
 
 /// Reactively computes the [CostSummary] for [vehicleId] using authoritative records.
 final costSummaryProvider =

@@ -25,6 +25,22 @@ class VehicleCostSummaryCard extends ConsumerWidget {
     final selectedDate = ref.watch(costSelectedDateProvider(vehicleId));
     final summary = ref.watch(costSummaryProvider(vehicleId));
 
+    final now = DateTime.now();
+    bool canGoNext = false;
+    switch (selectedPeriod) {
+      case CostPeriod.daily:
+        canGoNext = selectedDate.year < now.year ||
+            (selectedDate.year == now.year && selectedDate.month < now.month) ||
+            (selectedDate.year == now.year && selectedDate.month == now.month && selectedDate.day < now.day);
+        break;
+      case CostPeriod.monthly:
+        canGoNext = selectedDate.year < now.year || (selectedDate.year == now.year && selectedDate.month < now.month);
+        break;
+      case CostPeriod.yearly:
+        canGoNext = selectedDate.year < now.year;
+        break;
+    }
+
     return Card(
       elevation: AppSizes.elevationSm,
       shape: RoundedRectangleBorder(
@@ -159,40 +175,68 @@ class VehicleCostSummaryCard extends ConsumerWidget {
                         selectedDate,
                         selectedPeriod,
                       );
-                      ref.read(costSelectedDateProvider(vehicleId).notifier).state =
-                          prev;
+                      ref.read(costSelectedDateProvider(vehicleId).notifier).updateDate(prev);
                     },
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 14,
-                        color: colorScheme.primary,
+                  InkWell(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final initialMode = selectedPeriod == CostPeriod.yearly
+                          ? DatePickerMode.year
+                          : DatePickerMode.day;
+                      
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(1980),
+                        lastDate: now,
+                        initialDatePickerMode: initialMode,
+                        helpText: 'Select records date',
+                      );
+                      
+                      if (picked != null) {
+                        ref.read(costSelectedDateProvider(vehicleId).notifier).updateDate(picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.paddingSm,
+                        vertical: AppSizes.paddingXs,
                       ),
-                      const SizedBox(width: AppSizes.spacingXs),
-                      Text(
-                        summary.periodLabel,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: 14,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: AppSizes.spacingXs),
+                          Text(
+                            summary.periodLabel,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right_rounded),
-                    tooltip: 'Next ${selectedPeriod.label}',
+                    tooltip: canGoNext ? 'Next ${selectedPeriod.label}' : 'Next date unavailable',
                     visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      final next = CostSummaryCalculator.nextPeriod(
-                        selectedDate,
-                        selectedPeriod,
-                      );
-                      ref.read(costSelectedDateProvider(vehicleId).notifier).state =
-                          next;
-                    },
+                    onPressed: canGoNext
+                        ? () {
+                            final next = CostSummaryCalculator.nextPeriod(
+                              selectedDate,
+                              selectedPeriod,
+                            );
+                            ref.read(costSelectedDateProvider(vehicleId).notifier).updateDate(next);
+                          }
+                        : null,
                   ),
                 ],
               ),
