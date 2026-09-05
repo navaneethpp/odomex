@@ -278,6 +278,23 @@ String? validateNotFutureDate(DateTime? date, String fieldName) {
   return null;
 }
 
+
+/// Validates a date that must not be before a reference purchase date.
+String? validateDependentDate(DateTime? date, DateTime? purchaseDate, String fieldName) {
+  if (date == null) return null;
+  final notFutureError = validateNotFutureDate(date, fieldName);
+  if (notFutureError != null) return notFutureError;
+  
+  if (purchaseDate != null) {
+    final pDate = DateTime(purchaseDate.year, purchaseDate.month, purchaseDate.day);
+    final dDate = DateTime(date.year, date.month, date.day);
+    if (dDate.isBefore(pDate)) {
+      return '$fieldName cannot be before the vehicle purchase date.';
+    }
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────
 // INSURANCE VALIDATORS
 // ─────────────────────────────────────────────

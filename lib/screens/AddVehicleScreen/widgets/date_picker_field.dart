@@ -20,6 +20,8 @@ class DatePickerField extends StatefulWidget {
   final DateTime? initialDate;
   final String? hintText;
   final bool disableFutureDates;
+  final bool enabled;
+  final VoidCallback? onDisabledTap;
 
   const DatePickerField({
     super.key,
@@ -32,6 +34,8 @@ class DatePickerField extends StatefulWidget {
     this.initialDate,
     this.hintText,
     this.disableFutureDates = false,
+    this.enabled = true,
+    this.onDisabledTap,
   });
 
   @override
@@ -69,12 +73,19 @@ class _DatePickerFieldState extends State<DatePickerField> {
       }
     }
 
+
+    DateTime fallbackInitial = now;
+    if (widget.firstDate != null && fallbackInitial.isBefore(widget.firstDate!)) {
+      fallbackInitial = widget.firstDate!;
+    }
+    
     final picked = await showDatePicker(
       context: context,
-      initialDate: widget.initialDate ?? widget.selectedDate ?? now,
+      initialDate: widget.initialDate ?? widget.selectedDate ?? fallbackInitial,
       firstDate: widget.firstDate ?? DateTime(1980),
       lastDate: effectiveLastDate,
     );
+
     if (picked != null) {
       widget.onDateSelected(picked);
       _fieldState?.didChange(picked);
@@ -95,19 +106,28 @@ class _DatePickerFieldState extends State<DatePickerField> {
       builder: (state) {
         _fieldState = state;
         return InkWell(
-          onTap: () => _openPicker(context),
+          onTap: () {
+            if (!widget.enabled) {
+              widget.onDisabledTap?.call();
+              return;
+            }
+            _openPicker(context);
+          },
           borderRadius: BorderRadius.circular(10),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: widget.labelText,
-              hintText: widget.hintText ?? 'Select date',
-              errorText: state.errorText,
-              suffixIcon: const Icon(Icons.calendar_today_outlined),
+          child: Opacity(
+            opacity: widget.enabled ? 1.0 : 0.6,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: widget.labelText,
+                hintText: widget.hintText ?? 'Select date',
+                errorText: state.errorText,
+                suffixIcon: const Icon(Icons.calendar_today_outlined),
+              ),
+              isEmpty: displayText == null,
+              child: displayText != null
+                  ? Text(displayText)
+                  : const SizedBox.shrink(),
             ),
-            isEmpty: displayText == null,
-            child: displayText != null
-                ? Text(displayText)
-                : const SizedBox.shrink(),
           ),
         );
       },

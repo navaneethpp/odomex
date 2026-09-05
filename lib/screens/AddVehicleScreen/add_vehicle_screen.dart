@@ -156,6 +156,28 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   // ─────────────────────────────────────────────
   // DATE EVENT HANDLERS
+
+  void _onPurchaseDateSelected(DateTime date) {
+    setState(() {
+      _purchaseDate = date;
+      final pDate = DateTime(date.year, date.month, date.day);
+      
+      if (_insuranceStartDate != null) {
+        final iDate = DateTime(_insuranceStartDate!.year, _insuranceStartDate!.month, _insuranceStartDate!.day);
+        if (iDate.isBefore(pDate)) {
+          _insuranceStartDate = null;
+        }
+      }
+      
+      if (_pucStartDate != null) {
+        final puDate = DateTime(_pucStartDate!.year, _pucStartDate!.month, _pucStartDate!.day);
+        if (puDate.isBefore(pDate)) {
+          _pucStartDate = null;
+        }
+      }
+    });
+  }
+
   // ─────────────────────────────────────────────
 
   void _onInsuranceStartDateSelected(DateTime date) {
@@ -590,7 +612,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           labelText: 'Purchase Date *',
           selectedDate: _purchaseDate,
           disableFutureDates: true,
-          onDateSelected: (date) => setState(() => _purchaseDate = date),
+          onDateSelected: _onPurchaseDateSelected,
           validator: (date) => validatePurchaseDate(
             date,
             manufacturingYear: _parsedYear,
@@ -678,9 +700,18 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           selectedDate: _insuranceStartDate,
           onDateSelected: _onInsuranceStartDateSelected,
           disableFutureDates: true,
+          firstDate: _purchaseDate,
+          initialDate: _insuranceStartDate ?? _purchaseDate,
+          enabled: _purchaseDate != null,
+          onDisabledTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Select the vehicle purchase date first.')),
+            );
+          },
           validator: (date) {
             if (!_hasAnyInsuranceInput) return null;
-            return validateNotFutureDate(date, 'Insurance start date');
+            if (_purchaseDate == null) return 'Select the vehicle purchase date first.';
+            return validateDependentDate(date, _purchaseDate, 'Insurance start date');
           },
         ),
 
@@ -740,9 +771,18 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           selectedDate: _pucStartDate,
           onDateSelected: _onPucStartDateSelected,
           disableFutureDates: true,
+          firstDate: _purchaseDate,
+          initialDate: _pucStartDate ?? _purchaseDate,
+          enabled: _purchaseDate != null,
+          onDisabledTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Select the vehicle purchase date first.')),
+            );
+          },
           validator: (date) {
             if (!_hasAnyPucInput) return null;
-            return validateNotFutureDate(date, 'PUC start date');
+            if (_purchaseDate == null) return 'Select the vehicle purchase date first.';
+            return validateDependentDate(date, _purchaseDate, 'PUC start date');
           },
         ),
 
