@@ -319,17 +319,18 @@ class VehicleDetailsScreen extends ConsumerWidget {
             const SizedBox(height: AppSizes.spacingLg),
 
             // ── 8. Engine Information ──────────────────
-            const SectionTitle(title: 'Engine Information'),
+            const SectionTitle(title: 'Powertrain Information'),
             InfoListCard(
               rows: [
-                InfoRow(label: 'Fuel Type', value: vehicle.fuelType),
-                InfoRow(
-                  label: 'Engine',
-                  value: formatEngineCapacity(
-                    vehicle.engineCapacity,
-                    vehicle.engineCapacityUnit,
+                InfoRow(label: 'Current Powertrain', value: vehicle.powertrainType?.displayName ?? vehicle.fuelType),
+                if (vehicle.powertrainType != PowertrainType.ev && vehicle.engineCapacity != null)
+                  InfoRow(
+                    label: 'Engine',
+                    value: formatEngineCapacity(
+                      vehicle.engineCapacity,
+                      vehicle.engineCapacityUnit,
+                    ),
                   ),
-                ),
               ],
             ),
 

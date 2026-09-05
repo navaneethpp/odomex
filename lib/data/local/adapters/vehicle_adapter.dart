@@ -64,13 +64,14 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
           : (fields[8] != null ? EngineCapacityUnit.cc : null),
       vehicleType: vehicleType,
       customBrand: fields[25] as String?,
+      powertrainType: fields[26] as PowertrainType?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Vehicle obj) {
     writer
-      ..writeByte(26) // Total fields
+      ..writeByte(27) // Total fields
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -122,6 +123,8 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       ..writeByte(24)
       ..write(obj.vehicleType.storageKey)
       ..writeByte(25)
-      ..write(obj.customBrand);
+      ..write(obj.customBrand)
+      ..writeByte(26)
+      ..write(obj.powertrainType);
   }
 }

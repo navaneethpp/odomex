@@ -1,6 +1,10 @@
 import 'package:odomex/models/vehicle_type.dart';
+import 'package:odomex/models/powertrain_type.dart';
+import 'package:odomex/models/energy_source.dart';
 
 export 'package:odomex/models/vehicle_type.dart';
+export 'package:odomex/models/powertrain_type.dart';
+export 'package:odomex/models/energy_source.dart';
 
 enum VehicleBrand {
   // ── Existing Two-Wheeler Baseline (Index 0-5 for Hive compatibility) ──
@@ -264,7 +268,8 @@ class Vehicle {
     required this.odometerReading,
     required this.registrationNumber,
     required this.color,
-    required this.fuelType,
+    required this.fuelType, // Legacy compatibility, prefer powertrainType
+    PowertrainType? powertrainType,
     this.engineCapacity,
     EngineCapacityUnit? engineCapacityUnit,
     required this.purchaseDate,
@@ -291,6 +296,7 @@ class Vehicle {
     this.lastAccessedAt,
   })  : id = id ?? _generateId(),
         vehicleType = vehicleType ?? _inferVehicleType(model, brand),
+        powertrainType = powertrainType ?? _inferPowertrainType(fuelType),
         engineCapacityUnit = engineCapacityUnit ??
             (engineCapacity != null ? EngineCapacityUnit.cc : null);
 
@@ -371,6 +377,24 @@ class Vehicle {
     return VehicleType.motorcycle;
   }
 
+  /// Infers the appropriate [PowertrainType] from a legacy fuel type string.
+  static PowertrainType _inferPowertrainType(String fuelType) {
+    final lower = fuelType.toLowerCase();
+    if (lower.contains('diesel')) {
+      return PowertrainType.diesel;
+    }
+    if (lower.contains('cng')) {
+      return PowertrainType.cngPetrol;
+    }
+    if (lower.contains('electric')) {
+      return PowertrainType.ev;
+    }
+    if (lower.contains('hybrid')) {
+      return PowertrainType.hybrid; // Safe default for unknown legacy
+    }
+    return PowertrainType.petrol;
+  }
+
   // ─────────────────────────────────────────────
   // VEHICLE IDENTIFICATION
   // ─────────────────────────────────────────────
@@ -404,7 +428,36 @@ class Vehicle {
   // ENGINE
   // ─────────────────────────────────────────────
 
+  /// The legacy fuel type string. Prefer [powertrainType].
   final String fuelType;
+  
+  /// The selected powertrain for this vehicle.
+  final PowertrainType? powertrainType;
+
+  /// Available energy sources for this vehicle based on its powertrain.
+  List<EnergySource> get availableEnergySources {
+    final pt = powertrainType ?? Vehicle._inferPowertrainType(fuelType);
+    switch (pt) {
+      case PowertrainType.petrol:
+        return [EnergySource.petrol];
+      case PowertrainType.diesel:
+        return [EnergySource.diesel];
+      case PowertrainType.cngPetrol:
+        return [EnergySource.cng, EnergySource.petrol];
+      case PowertrainType.hybrid:
+        return [EnergySource.petrol, EnergySource.electricity];
+      case PowertrainType.plugInHybrid:
+        return [EnergySource.petrol, EnergySource.electricity];
+      case PowertrainType.ev:
+        return [EnergySource.electricity];
+    }
+  }
+
+  /// Whether this vehicle supports external charging (plug-in).
+  bool get supportsCharging {
+    final pt = powertrainType ?? Vehicle._inferPowertrainType(fuelType);
+    return pt == PowertrainType.plugInHybrid;
+  }
 
   /// Engine displacement value (numeric in CC or decimal in Litres).
   /// Null for electric vehicles, which have no displacement.
@@ -503,6 +556,7 @@ class Vehicle {
     String? registrationNumber,
     String? color,
     String? fuelType,
+    PowertrainType? powertrainType,
     double? engineCapacity,
     EngineCapacityUnit? engineCapacityUnit,
     DateTime? purchaseDate,
@@ -531,6 +585,7 @@ class Vehicle {
       registrationNumber: registrationNumber ?? this.registrationNumber,
       color: color ?? this.color,
       fuelType: fuelType ?? this.fuelType,
+      powertrainType: powertrainType ?? this.powertrainType,
       engineCapacity: engineCapacity ?? this.engineCapacity,
       engineCapacityUnit: engineCapacityUnit ?? this.engineCapacityUnit,
       purchaseDate: purchaseDate ?? this.purchaseDate,

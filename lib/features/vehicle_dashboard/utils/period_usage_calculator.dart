@@ -57,6 +57,8 @@ class PeriodUsageCalculator {
           if (r.cost != null) totalOilChangeCost += r.cost!;
         case OdometerRecord():
           break;
+      case ChargingRecord():
+        break;
       }
     }
 
@@ -87,6 +89,8 @@ class PeriodUsageCalculator {
             if (r.cost != null) dayOil += r.cost!;
           case OdometerRecord():
             break;
+      case ChargingRecord():
+        break;
         }
       }
 

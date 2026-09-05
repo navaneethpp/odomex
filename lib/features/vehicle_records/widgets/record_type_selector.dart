@@ -11,20 +11,23 @@ class RecordTypeSelector extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onSelected,
+    this.allowedTypes,
   });
 
   final VehicleRecordType selected;
   final ValueChanged<VehicleRecordType> onSelected;
+  final List<VehicleRecordType>? allowedTypes;
 
   @override
   Widget build(BuildContext context) {
+    final types = allowedTypes ?? VehicleRecordType.values;
     return Row(
-      children: VehicleRecordType.values
+      children: types
           .map(
             (type) => Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
-                  right: type == VehicleRecordType.values.last
+                  right: type == types.last
                       ? 0
                       : AppSizes.spacingSm,
                 ),

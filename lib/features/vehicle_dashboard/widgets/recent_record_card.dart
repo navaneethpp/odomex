@@ -125,6 +125,18 @@ class RecentRecordCard extends ConsumerWidget {
         secondaryValue = [odoPart, costPart].whereType<String>().join(' • ');
         badgeBg = Colors.deepOrange.withValues(alpha: 0.2);
         badgeFg = Colors.deepOrange.shade900;
+        
+      case ChargingRecord charge:
+        icon = Icons.electrical_services_rounded;
+        typeTitle = 'Charging';
+        mainValue = '${charge.energyCharged.toStringAsFixed(1)} kWh  •  ₹${_numberFormat.format(charge.cost)}';
+        final odoPart = charge.odometerReading != null
+            ? '${_numberFormat.format(charge.odometerReading!)} km'
+            : null;
+        final stationPart = charge.location;
+        secondaryValue = [odoPart, stationPart].whereType<String>().join(' • ');
+        badgeBg = Colors.blue.withValues(alpha: 0.2);
+        badgeFg = Colors.blue.shade900;
     }
 
     return Card(

@@ -87,6 +87,7 @@ class VehicleRecordNotifier extends StateNotifier<VehicleRecordState> {
         case ServiceRecord():
           odo = r.odometerReading;
         case OilChangeRecord():
+        case ChargingRecord():
           odo = r.odometerReading;
       }
       if (odo != null && odo > 0) {
@@ -208,6 +209,7 @@ final latestOdometerReadingProvider =
       case ServiceRecord():
         odo = r.odometerReading;
       case OilChangeRecord():
+      case ChargingRecord():
         odo = r.odometerReading;
     }
     if (odo != null && odo > 0) {

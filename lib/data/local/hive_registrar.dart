@@ -6,6 +6,9 @@ import 'package:odomex/data/local/adapters/service_record_adapter.dart';
 import 'package:odomex/data/local/adapters/service_type_adapter.dart';
 import 'package:odomex/data/local/adapters/vehicle_adapter.dart';
 import 'package:odomex/data/local/adapters/vehicle_brand_adapter.dart';
+import 'package:odomex/data/local/adapters/charging_record_adapter.dart';
+import 'package:odomex/data/local/adapters/powertrain_type_adapter.dart';
+import 'package:odomex/data/local/adapters/energy_source_adapter.dart';
 
 /// Registers all Hive TypeAdapters with [Hive].
 ///
@@ -31,5 +34,14 @@ void registerHiveAdapters() {
   }
   if (!Hive.isAdapterRegistered(6)) {
     Hive.registerAdapter(OilChangeRecordAdapter());
+  }
+  if (!Hive.isAdapterRegistered(7)) {
+    Hive.registerAdapter(ChargingRecordAdapter());
+  }
+  if (!Hive.isAdapterRegistered(8)) {
+    Hive.registerAdapter(PowertrainTypeAdapter());
+  }
+  if (!Hive.isAdapterRegistered(9)) {
+    Hive.registerAdapter(EnergySourceAdapter());
   }
 }

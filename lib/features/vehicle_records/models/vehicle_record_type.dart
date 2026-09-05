@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 enum VehicleRecordType {
   odometer,
   fuelRefill,
+  charging,
   service,
   oilChange,
 }
@@ -59,6 +60,13 @@ extension VehicleRecordTypeExtension on VehicleRecordType {
           chipLabel: 'Fuel',
           description: 'Record a fuel refill with cost and quantity.',
           icon: Icons.local_gas_station_rounded,
+        );
+      case VehicleRecordType.charging:
+        return const VehicleRecordTypeConfig(
+          title: 'Charging Session',
+          chipLabel: 'Charge',
+          description: 'Record an EV charging session.',
+          icon: Icons.electrical_services_rounded,
         );
       case VehicleRecordType.service:
         return const VehicleRecordTypeConfig(

@@ -108,6 +108,11 @@ class CostSummaryCalculator {
         case OdometerRecord():
           // Odometer-only logs do not incur monetary expenses
           break;
+        case ChargingRecord(cost: final c):
+          if (c > 0) {
+            fuelSum += c; // Grouping charging under fuel/energy for now
+            costBearingCount++;
+          }
       }
     }
 

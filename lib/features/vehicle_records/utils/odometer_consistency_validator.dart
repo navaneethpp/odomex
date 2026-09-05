@@ -56,6 +56,7 @@ class OdometerConsistencyValidator {
         case ServiceRecord():
           odo = r.odometerReading;
         case OilChangeRecord():
+        case ChargingRecord():
           odo = r.odometerReading;
       }
       if (odo != null && odo > 0) {

@@ -54,6 +54,8 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
           return r is OdometerRecord;
         case VehicleRecordType.fuelRefill:
           return r is FuelRecord;
+        case VehicleRecordType.charging:
+          return r is ChargingRecord;
         case VehicleRecordType.service:
           return r is ServiceRecord;
         case VehicleRecordType.oilChange:
@@ -107,6 +109,8 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
                         return r is OdometerRecord;
                       case VehicleRecordType.fuelRefill:
                         return r is FuelRecord;
+                      case VehicleRecordType.charging:
+                        return r is ChargingRecord;
                       case VehicleRecordType.service:
                         return r is ServiceRecord;
                       case VehicleRecordType.oilChange:

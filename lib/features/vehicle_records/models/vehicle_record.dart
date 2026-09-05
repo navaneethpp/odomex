@@ -1,3 +1,5 @@
+import 'package:odomex/models/energy_source.dart';
+
 /// Sealed base class for all vehicle historical activity records.
 ///
 /// Using a sealed class allows exhaustive pattern matching on record types
@@ -32,6 +34,9 @@ sealed class VehicleRecord {
   /// Generates a unique, stable ID for new records.
   static String generateId(String prefix) =>
       '${prefix}_${DateTime.now().microsecondsSinceEpoch}';
+
+  /// The odometer reading associated with this record, if any.
+  double? get odometerReading;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,6 +90,7 @@ class OdometerRecord extends VehicleRecord {
   final double odometer;
 
   /// Alias for [odometer] reading in km.
+  @override
   double get odometerReading => odometer;
 
   /// Optional free-form notes.
@@ -104,6 +110,7 @@ class FuelRecord extends VehicleRecord {
     super.createdAt,
     required this.quantity,
     required this.cost,
+    this.energySource,
     this.odometerReading,
     this.station,
     this.notes,
@@ -114,6 +121,7 @@ class FuelRecord extends VehicleRecord {
     required DateTime date,
     required double quantity,
     required double cost,
+    EnergySource? energySource,
     double? odometerReading,
     String? station,
     String? notes,
@@ -126,6 +134,7 @@ class FuelRecord extends VehicleRecord {
         createdAt: createdAt ?? DateTime.now(),
         quantity: quantity,
         cost: cost,
+        energySource: energySource,
         odometerReading: odometerReading,
         station: station,
         notes: notes,
@@ -135,6 +144,7 @@ class FuelRecord extends VehicleRecord {
     DateTime? date,
     double? quantity,
     double? cost,
+    EnergySource? energySource,
     double? odometerReading,
     String? station,
     String? notes,
@@ -146,6 +156,7 @@ class FuelRecord extends VehicleRecord {
       createdAt: createdAt,
       quantity: quantity ?? this.quantity,
       cost: cost ?? this.cost,
+      energySource: energySource ?? this.energySource,
       odometerReading: odometerReading ?? this.odometerReading,
       station: station ?? this.station,
       notes: notes ?? this.notes,
@@ -161,10 +172,14 @@ class FuelRecord extends VehicleRecord {
   /// Total cost of the refill, in INR.
   final double cost;
 
+  /// The energy source for this fuel record (e.g. CNG, Petrol).
+  final EnergySource? energySource;
+
   /// Alias for [cost] in INR.
   double get fuelCost => cost;
 
   /// Odometer reading at the time of refill (km).
+  @override
   final double? odometerReading;
 
   /// Name of the fuel station.
@@ -181,6 +196,87 @@ class FuelRecord extends VehicleRecord {
 
   /// Alias for [costPerLitre].
   double get fuelPricePerUnit => costPerLitre;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHARGING RECORD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// An external electrical charging event for a Plug-in Hybrid vehicle.
+class ChargingRecord extends VehicleRecord {
+  const ChargingRecord({
+    required super.id,
+    required super.vehicleId,
+    required super.date,
+    super.createdAt,
+    required this.energyCharged,
+    required this.cost,
+    this.odometerReading,
+    this.location,
+    this.notes,
+  });
+
+  factory ChargingRecord.create({
+    required String vehicleId,
+    required DateTime date,
+    required double energyCharged,
+    required double cost,
+    double? odometerReading,
+    String? location,
+    String? notes,
+    DateTime? createdAt,
+  }) =>
+      ChargingRecord(
+        id: VehicleRecord.generateId('charge'),
+        vehicleId: vehicleId,
+        date: date,
+        createdAt: createdAt ?? DateTime.now(),
+        energyCharged: energyCharged,
+        cost: cost,
+        odometerReading: odometerReading,
+        location: location,
+        notes: notes,
+      );
+
+  ChargingRecord copyWith({
+    DateTime? date,
+    double? energyCharged,
+    double? cost,
+    double? odometerReading,
+    String? location,
+    String? notes,
+  }) {
+    return ChargingRecord(
+      id: id,
+      vehicleId: vehicleId,
+      date: date ?? this.date,
+      createdAt: createdAt,
+      energyCharged: energyCharged ?? this.energyCharged,
+      cost: cost ?? this.cost,
+      odometerReading: odometerReading ?? this.odometerReading,
+      location: location ?? this.location,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  /// Electricity charged, in kWh.
+  final double energyCharged;
+
+  /// Total cost of charging, in INR.
+  final double cost;
+
+  /// Odometer reading at the time of charging (km).
+  @override
+  final double? odometerReading;
+
+  /// Location of the charging station.
+  final String? location;
+
+  /// Optional notes.
+  final String? notes;
+  
+  /// Cost per kWh, computed from [cost] and [energyCharged].
+  double get costPerKwh => energyCharged > 0 ? cost / energyCharged : 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,6 +376,7 @@ class ServiceRecord extends VehicleRecord {
   final String description;
 
   /// Odometer reading at the time of service (km).
+  @override
   final double? odometerReading;
 
   /// Total service cost, in INR.
@@ -351,6 +448,7 @@ class OilChangeRecord extends VehicleRecord {
   }
 
   /// Odometer reading at which the oil was changed (km).
+  @override
   final double odometerReading;
 
   /// Oil specification, e.g. '10W-40'.

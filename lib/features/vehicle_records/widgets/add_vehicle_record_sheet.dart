@@ -11,7 +11,9 @@ import 'package:odomex/features/vehicle_records/widgets/oil_change_record_form.d
 import 'package:odomex/features/vehicle_records/widgets/record_form_actions.dart';
 import 'package:odomex/features/vehicle_records/widgets/record_type_selector.dart';
 import 'package:odomex/features/vehicle_records/widgets/service_record_form.dart';
+import 'package:odomex/features/vehicle_records/widgets/charging_record_form.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
+import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 
 /// Opens the standard [AddVehicleRecordSheet] modal bottom sheet.
@@ -71,6 +73,8 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
         _selectedType = VehicleRecordType.odometer;
       } else if (rec is FuelRecord) {
         _selectedType = VehicleRecordType.fuelRefill;
+      } else if (rec is ChargingRecord) {
+        _selectedType = VehicleRecordType.charging;
       } else if (rec is ServiceRecord) {
         _selectedType = VehicleRecordType.service;
       } else if (rec is OilChangeRecord) {
@@ -95,6 +99,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
   // Separate GlobalKey per form type to ensure clean form lifecycle and state
   final _odometerKey = GlobalKey<VehicleRecordFormState>();
   final _fuelKey = GlobalKey<VehicleRecordFormState>();
+  final _chargingKey = GlobalKey<VehicleRecordFormState>();
   final _serviceKey = GlobalKey<VehicleRecordFormState>();
   final _oilKey = GlobalKey<VehicleRecordFormState>();
 
@@ -104,6 +109,8 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
         return _odometerKey;
       case VehicleRecordType.fuelRefill:
         return _fuelKey;
+      case VehicleRecordType.charging:
+        return _chargingKey;
       case VehicleRecordType.service:
         return _serviceKey;
       case VehicleRecordType.oilChange:
@@ -227,19 +234,33 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
 
               const SizedBox(height: AppSizes.spacingLg),
 
-              // ── Record Type Selector ──
+              // ── Top Type Selector ──
               if (widget.initialRecord == null) ...[
-                RecordTypeSelector(
-                  selected: _selectedType,
-                  onSelected: (type) {
-                    setState(() => _selectedType = type);
-                  },
+                Builder(
+                  builder: (context) {
+                    final allowedTypes = [
+                      VehicleRecordType.odometer,
+                      VehicleRecordType.fuelRefill,
+                      if (vehicle?.powertrainType == PowertrainType.plugInHybrid)
+                        VehicleRecordType.charging,
+                      VehicleRecordType.service,
+                      VehicleRecordType.oilChange,
+                    ];
+                    return RecordTypeSelector(
+                      selected: _selectedType,
+                      allowedTypes: allowedTypes,
+                      onSelected: (type) {
+                        setState(() => _selectedType = type);
+                      },
+                    );
+                  }
                 ),
                 const SizedBox(height: AppSizes.spacingXl),
+              ] else ...[
               ],
 
               // ── Contextual Form ──
-              _buildActiveForm(vehicle?.odometerReading),
+              _buildActiveForm(vehicle?.odometerReading, vehicle),
 
               const SizedBox(height: AppSizes.spacingXl),
 
@@ -256,7 +277,7 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
     );
   }
 
-  Widget _buildActiveForm(double? currentOdometer) {
+  Widget _buildActiveForm(double? currentOdometer, Vehicle? vehicle) {
     switch (_selectedType) {
       case VehicleRecordType.odometer:
         return OdometerRecordForm(
@@ -270,8 +291,17 @@ class _AddVehicleRecordSheetState extends ConsumerState<AddVehicleRecordSheet> {
         return FuelRecordForm(
           key: _fuelKey,
           vehicleId: widget.vehicleId,
+          vehicle: vehicle,
           currentOdometer: currentOdometer,
           initialRecord: widget.initialRecord as FuelRecord?,
+          defaultOdometer: _defaultOdometerText,
+        );
+      case VehicleRecordType.charging:
+        return ChargingRecordForm(
+          key: _chargingKey,
+          vehicleId: widget.vehicleId,
+          currentOdometer: currentOdometer,
+          initialRecord: widget.initialRecord as ChargingRecord?,
           defaultOdometer: _defaultOdometerText,
         );
       case VehicleRecordType.service:

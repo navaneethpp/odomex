@@ -57,24 +57,12 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   // 2. ENGINE INFORMATION
   // ─────────────────────────────────────────────
 
-  String? _fuelType;
-  final _customFuelController = TextEditingController();
+  PowertrainType? _powertrainType;
   final _engineCapacityController = TextEditingController();
   EngineCapacityUnit _engineCapacityUnit = EngineCapacityUnit.cc;
 
-  static const String _otherFuel = 'Other';
-  static const String _electricFuel = 'Electric';
-
-  static const List<String> _fuelTypes = [
-    'Petrol',
-    'Diesel',
-    _electricFuel,
-    'CNG',
-    _otherFuel,
-  ];
-
-  bool get _isElectric => _fuelType == _electricFuel;
-  bool get _isOtherFuel => _fuelType == _otherFuel;
+  bool get _isElectric => _powertrainType == PowertrainType.plugInHybrid; // Temporarily using plugInHybrid as electric proxy if needed, though pure electric isn't supported yet. We'll hide engine capacity for plugInHybrid maybe? No, plugInHybrid has a petrol engine. So no powertrain is pure electric.
+  bool get _hasNoEngine => _powertrainType == PowertrainType.ev;
 
   // ─────────────────────────────────────────────
   // 3. USAGE INFORMATION
@@ -119,7 +107,6 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
     _yearController.dispose();
     _regNumberController.dispose();
     _colorController.dispose();
-    _customFuelController.dispose();
     _engineCapacityController.dispose();
     _odometerController.dispose();
     _insuranceProviderController.dispose();
@@ -218,10 +205,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
     setState(() => _isSaving = true);
 
-    // Determine the fuel type to store.
-    final resolvedFuelType = _isOtherFuel
-        ? _customFuelController.text.trim()
-        : _fuelType!;
+    // Removed custom fuel logic as per new architecture
+    // We pass the string value for backwards compatibility, or better, we set the powertrain.
+    final resolvedFuelType = _powertrainType?.displayName ?? 'Petrol';
 
     // Normalise the registration number to canonical spaced format.
     final normalisedReg =
@@ -237,11 +223,12 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       registrationNumber: normalisedReg,
       color: _colorController.text.trim(),
       fuelType: resolvedFuelType,
+      powertrainType: _powertrainType,
       // Electric vehicles have no engine displacement.
-      engineCapacity: _isElectric
+      engineCapacity: _hasNoEngine
           ? null
           : double.tryParse(_engineCapacityController.text.trim()),
-      engineCapacityUnit: _isElectric ? null : _engineCapacityUnit,
+      engineCapacityUnit: _hasNoEngine ? null : _engineCapacityUnit,
       purchaseDate: _purchaseDate!,
 
       // Insurance — only persisted when the user filled the section.
@@ -480,41 +467,42 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   Widget _buildEngineInfoSection() {
     return FormSectionCard(
-      title: 'Engine Information',
+      title: 'Powertrain Information',
       children: [
-        // Fuel Type
-        DropdownButtonFormField<String>(
-          initialValue: _fuelType,
-          decoration: const InputDecoration(labelText: 'Fuel Type *'),
-          items: _fuelTypes
-              .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+        // Powertrain Type
+        DropdownButtonFormField<PowertrainType>(
+          initialValue: _powertrainType,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Powertrain *'),
+          items: PowertrainType.values
+              .map((pt) => DropdownMenuItem(
+                    value: pt,
+                    child: Text(pt.displayName),
+                  ))
               .toList(),
           onChanged: (value) {
             setState(() {
-              _fuelType = value;
-              // Clear engine capacity when switching to Electric.
-              if (value == _electricFuel) {
-                _engineCapacityController.clear();
-              }
+              _powertrainType = value;
             });
           },
-          validator: (value) => validateFuelType(value),
+          validator: (value) => value == null ? 'Please select a powertrain' : null,
         ),
-
-        // Custom Fuel Type — only shown when "Other" is selected
-        if (_isOtherFuel)
-          TextFormField(
-            controller: _customFuelController,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Specify Fuel Type *',
-              hintText: 'e.g. Hydrogen',
+        
+        if (_powertrainType != null && _powertrainType!.description.isNotEmpty) ...[
+          const SizedBox(height: AppSizes.spacingSm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.paddingSm),
+            child: Text(
+              _powertrainType!.description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
-            validator: (v) => validateCustomFuelType(v),
           ),
+        ],
 
-        // Engine Capacity — hidden for electric vehicles
-        if (!_isElectric) ...[
+        // Engine Capacity — hidden for pure electric vehicles
+        if (!_hasNoEngine) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

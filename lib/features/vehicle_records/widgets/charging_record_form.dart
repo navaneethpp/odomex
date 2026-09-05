@@ -7,45 +7,41 @@ import 'package:odomex/features/vehicle_records/utils/fuel_cost_calculator.dart'
 import 'package:odomex/features/vehicle_records/utils/vehicle_record_validators.dart';
 import 'package:odomex/features/vehicle_records/widgets/smart_odometer_input_field.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_record_form_base.dart';
-import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/widgets/app_date_field.dart';
 
 /// Form for logging a fuel refill with smart automatic total cost calculation
 /// and smart odometer autofill.
-class FuelRecordForm extends StatefulWidget {
-  const FuelRecordForm({
+class ChargingRecordForm extends StatefulWidget {
+  const ChargingRecordForm({
     super.key,
     required this.vehicleId,
     this.currentOdometer,
     this.initialRecord,
     this.defaultOdometer,
-    this.vehicle,
   });
 
   final String vehicleId;
   final double? currentOdometer;
-  final FuelRecord? initialRecord;
+  final ChargingRecord? initialRecord;
   final String? defaultOdometer;
-  final Vehicle? vehicle;
 
   @override
-  VehicleRecordFormState<FuelRecordForm> createState() =>
-      _FuelRecordFormState();
+  VehicleRecordFormState<ChargingRecordForm> createState() =>
+      _ChargingRecordFormState();
 }
 
-class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
+class _ChargingRecordFormState extends VehicleRecordFormState<ChargingRecordForm> {
   final _formKey = GlobalKey<FormState>();
-  final _quantityController = TextEditingController();
+  final _energyChargedController = TextEditingController();
   final _priceController = TextEditingController();
   final _amountController = TextEditingController();
   final _odometerController = TextEditingController();
   DateTime? _date = DateTime.now();
-  final _stationController = TextEditingController();
+  final _locationController = TextEditingController();
   final _notesController = TextEditingController();
 
-  late EnergySource _selectedSource;
 
-  final _qtyFocus = FocusNode();
+  final _energyFocus = FocusNode();
   final _priceFocus = FocusNode();
   final _amountFocus = FocusNode();
 
@@ -59,33 +55,26 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     super.initState();
     if (widget.initialRecord != null) {
       final rec = widget.initialRecord!;
-      _selectedSource = rec.energySource ?? EnergySource.petrol;
-      _quantityController.text = rec.quantity.toString();
-      _priceController.text = rec.costPerLitre.toStringAsFixed(2);
+      _energyChargedController.text = rec.energyCharged.toString();
+      _priceController.text = (rec.cost / rec.energyCharged).toStringAsFixed(2);
       _amountController.text = rec.cost.toStringAsFixed(2);
       if (rec.odometerReading != null) {
         _odometerController.text = rec.odometerReading.toString();
       }
       _date = rec.date;
-      if (rec.station != null) _stationController.text = rec.station!;
+      if (rec.location != null) _locationController.text = rec.location!;
       if (rec.notes != null) _notesController.text = rec.notes!;
     } else {
-      final availableSources = widget.vehicle?.availableEnergySources
-              .where((s) => s != EnergySource.electricity)
-              .toList() ??
-          [EnergySource.petrol];
-      _selectedSource = availableSources.isNotEmpty ? availableSources.first : EnergySource.petrol;
-      
       if (widget.defaultOdometer != null) {
         _odometerController.text = widget.defaultOdometer!;
       }
     }
     
-    _quantityController.addListener(_onInputChanged);
+    _energyChargedController.addListener(_onInputChanged);
     _priceController.addListener(_onInputChanged);
     _amountController.addListener(_onInputChanged);
 
-    _qtyFocus.addListener(() => _onFocusChange('qty', _qtyFocus.hasFocus));
+    _energyFocus.addListener(() => _onFocusChange('energy', _energyFocus.hasFocus));
     _priceFocus.addListener(() => _onFocusChange('price', _priceFocus.hasFocus));
     _amountFocus.addListener(() => _onFocusChange('amount', _amountFocus.hasFocus));
   }
@@ -99,17 +88,17 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
   @override
   void dispose() {
-    _quantityController.removeListener(_onInputChanged);
+    _energyChargedController.removeListener(_onInputChanged);
     _priceController.removeListener(_onInputChanged);
     _amountController.removeListener(_onInputChanged);
-    _quantityController.dispose();
+    _energyChargedController.dispose();
     _priceController.dispose();
     _amountController.dispose();
-    _qtyFocus.dispose();
+    _energyFocus.dispose();
     _priceFocus.dispose();
     _amountFocus.dispose();
     _odometerController.dispose();
-    _stationController.dispose();
+    _locationController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -117,11 +106,11 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   void _onInputChanged() {
     if (_isCalculating) return;
 
-    final qtyStr = _quantityController.text.trim();
+    final energyStr = _energyChargedController.text.trim();
     final priceStr = _priceController.text.trim();
     final amtStr = _amountController.text.trim();
 
-    int filled = (qtyStr.isNotEmpty ? 1 : 0) +
+    int filled = (energyStr.isNotEmpty ? 1 : 0) +
         (priceStr.isNotEmpty ? 1 : 0) +
         (amtStr.isNotEmpty ? 1 : 0);
 
@@ -136,40 +125,40 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     String? newCalculatedField;
 
     String target;
-    if (qtyStr.isEmpty) {
-      target = 'qty';
+    if (energyStr.isEmpty) {
+      target = 'energy';
     } else if (priceStr.isEmpty) {
       target = 'price';
     } else if (amtStr.isEmpty) {
       target = 'amount';
     } else {
-      target = ['qty', 'price', 'amount'].firstWhere(
+      target = ['energy', 'price', 'amount'].firstWhere(
         (f) => !_focusHistory.reversed.take(2).contains(f), 
         orElse: () => 'amount');
     }
 
-    final qty = double.tryParse(qtyStr);
+    final energy = double.tryParse(energyStr);
     final price = double.tryParse(priceStr);
     final amt = double.tryParse(amtStr);
 
-    if (target == 'amount' && qty != null && price != null) {
-      final a = FuelCostCalculator.calculateTotalCost(quantity: qty, pricePerUnit: price);
+    if (target == 'amount' && energy != null && price != null) {
+      final a = FuelCostCalculator.calculateTotalCost(quantity: energy, pricePerUnit: price);
       if (a != null) {
         _amountController.text = a.toStringAsFixed(2);
         newCalculatedField = 'amount';
       }
-    } else if (target == 'qty' && amt != null && price != null) {
+    } else if (target == 'energy' && amt != null && price != null) {
       final q = FuelCostCalculator.calculateQuantity(totalCost: amt, pricePerUnit: price);
       if (q != null) {
         String formattedQ = q.toStringAsFixed(3);
         if (formattedQ.contains('.')) {
           formattedQ = formattedQ.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
         }
-        _quantityController.text = formattedQ;
-        newCalculatedField = 'qty';
+        _energyChargedController.text = formattedQ;
+        newCalculatedField = 'energy';
       }
-    } else if (target == 'price' && amt != null && qty != null) {
-      final p = FuelCostCalculator.calculatePricePerUnit(totalCost: amt, quantity: qty);
+    } else if (target == 'price' && amt != null && energy != null) {
+      final p = FuelCostCalculator.calculatePricePerUnit(totalCost: amt, quantity: energy);
       if (p != null) {
         _priceController.text = p.toStringAsFixed(2);
         newCalculatedField = 'price';
@@ -185,15 +174,15 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     _isCalculating = false;
   }
 
-  void _clearFuelFields() {
-    if (_quantityController.text.isEmpty &&
+  void _clearChargingFields() {
+    if (_energyChargedController.text.isEmpty &&
         _priceController.text.isEmpty &&
         _amountController.text.isEmpty) {
       return;
     }
 
     _isCalculating = true;
-    _quantityController.clear();
+    _energyChargedController.clear();
     _priceController.clear();
     _amountController.clear();
 
@@ -206,8 +195,8 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     Future.microtask(() => _isCalculating = false);
   }
 
-  String? _validateFuelField(String? value, String? Function(String?) defaultValidator) {
-    final emptyCount = (_quantityController.text.trim().isEmpty ? 1 : 0) +
+  String? _validateChargingField(String? value, String? Function(String?) defaultValidator) {
+    final emptyCount = (_energyChargedController.text.trim().isEmpty ? 1 : 0) +
                        (_priceController.text.trim().isEmpty ? 1 : 0) +
                        (_amountController.text.trim().isEmpty ? 1 : 0);
     if (emptyCount >= 2 && value?.trim().isEmpty == true) {
@@ -219,20 +208,20 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
   }
 
   @override
-  FuelRecord? buildRecord() {
+  ChargingRecord? buildRecord() {
     if (!_formKey.currentState!.validate()) return null;
 
-    final quantity = double.tryParse(_quantityController.text.trim());
+    final energyCharged = double.tryParse(_energyChargedController.text.trim());
     final price = double.tryParse(_priceController.text.trim());
     final totalCost = double.tryParse(_amountController.text.trim());
 
-    if (quantity == null || price == null || totalCost == null) return null;
+    if (energyCharged == null || price == null || totalCost == null) return null;
 
     if (!FuelCostCalculator.areValuesConsistent(
-        quantity: quantity, pricePerUnit: price, totalCost: totalCost)) {
+        quantity: energyCharged, pricePerUnit: price, totalCost: totalCost)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Fuel details don't match. Quantity × fuel price must equal the amount paid."),
+          content: Text("Charging details don't match. Quantity × price per kWh must equal the amount paid."),
           backgroundColor: Colors.red,
         ),
       );
@@ -241,30 +230,28 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
     final odometerText = _odometerController.text.trim();
     final parsedOdo = odometerText.isNotEmpty ? double.tryParse(odometerText) : null;
-    final parsedStation = _stationController.text.trim().isEmpty ? null : _stationController.text.trim();
+    final parsedLocation = _locationController.text.trim().isEmpty ? null : _locationController.text.trim();
     final parsedNotes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
 
     if (widget.initialRecord != null) {
       return widget.initialRecord!.copyWith(
         date: _date!,
-        quantity: quantity,
+        energyCharged: energyCharged,
         cost: totalCost,
         odometerReading: parsedOdo,
-        station: parsedStation,
+        location: parsedLocation,
         notes: parsedNotes,
-        energySource: _selectedSource,
       );
     }
 
-    return FuelRecord.create(
+    return ChargingRecord.create(
       vehicleId: widget.vehicleId,
       date: _date!,
-      quantity: quantity,
+      energyCharged: energyCharged,
       cost: totalCost,
       odometerReading: parsedOdo,
-      station: parsedStation,
+      location: parsedLocation,
       notes: parsedNotes,
-      energySource: _selectedSource,
     );
   }
 
@@ -273,10 +260,6 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final availableSources = widget.vehicle?.availableEnergySources
-            .where((s) => s != EnergySource.electricity)
-            .toList() ??
-        [EnergySource.petrol];
 
     final odoHint = widget.currentOdometer != null
         ? 'Current: ${widget.currentOdometer!.toStringAsFixed(0)} km'
@@ -287,40 +270,16 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Energy Source Selector (Only show if multiple options) ──
-          if (availableSources.length > 1) ...[
-            const SizedBox(height: AppSizes.spacingMd),
-            Text(
-              'Fuel Source',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: AppSizes.spacingSm),
-            SegmentedButton<EnergySource>(
-              segments: availableSources
-                  .map((s) => ButtonSegment(
-                        value: s,
-                        label: Text(s.displayName),
-                      ))
-                  .toList(),
-              selected: {_selectedSource},
-              onSelectionChanged: (set) {
-                setState(() => _selectedSource = set.first);
-              },
-            ),
-            const SizedBox(height: AppSizes.spacingLg),
-          ],
 
-          // ── Fuel Quantity & Price per Litre (side by side) ──
+          // ── Energy Added & Price per kWh (side by side) ──
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextFormField(
-                  key: ValueKey('qty_$_clearCount'),
-                  controller: _quantityController,
-                  focusNode: _qtyFocus,
+                  key: ValueKey('energy_$_clearCount'),
+                  controller: _energyChargedController,
+                  focusNode: _energyFocus,
                   autofocus: true,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
@@ -328,15 +287,15 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Fuel Quantity *',
-                    suffixText: _selectedSource.unit,
+                    labelText: 'Energy Added *',
+                    suffixText: 'kWh',
                     hintText: 'e.g. 5.5',
-                    helperText: _calculatedField == 'qty' ? 'Calculated automatically' : null,
-                    helperStyle: _calculatedField == 'qty' 
+                    helperText: _calculatedField == 'energy' ? 'Calculated automatically' : null,
+                    helperStyle: _calculatedField == 'energy' 
                         ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
                         : null,
                   ),
-                  validator: (v) => _validateFuelField(v, validateFuelQuantity),
+                  validator: (v) => _validateChargingField(v, validateFuelQuantity),
                 ),
               ),
 
@@ -353,16 +312,16 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                   ],
                   decoration: InputDecoration(
-                    labelText: 'Price per ${_selectedSource.unit} *',
+                    labelText: 'Price per kWh *',
                     prefixText: '${AppConstants.currencySymbol} ',
-                    suffixText: '/${_selectedSource.unit}',
+                    suffixText: '/kWh',
                     hintText: 'e.g. 105.50',
                     helperText: _calculatedField == 'price' ? 'Calculated automatically' : null,
                     helperStyle: _calculatedField == 'price' 
                         ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
                         : null,
                   ),
-                  validator: (v) => _validateFuelField(v, validateFuelPrice),
+                  validator: (v) => _validateChargingField(v, validateFuelPrice),
                 ),
               ),
             ],
@@ -388,7 +347,7 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
                   ? TextStyle(color: colorScheme.primary, fontStyle: FontStyle.italic) 
                   : null,
             ),
-            validator: (v) => _validateFuelField(v, validateFuelCost),
+            validator: (v) => _validateChargingField(v, validateFuelCost),
           ),
 
           Align(
@@ -396,7 +355,7 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
             child: Semantics(
               label: 'Clear fuel calculation fields',
               child: TextButton.icon(
-                onPressed: _clearFuelFields,
+                onPressed: _clearChargingFields,
                 icon: const Icon(Icons.clear_all, size: 18),
                 label: const Text('Clear'),
                 style: TextButton.styleFrom(
@@ -435,16 +394,16 @@ class _FuelRecordFormState extends VehicleRecordFormState<FuelRecordForm> {
 
           const SizedBox(height: AppSizes.spacingMd),
 
-          // ── Station (optional) ──
+          // ── Location (optional) ──
           TextFormField(
-            controller: _stationController,
+            controller: _locationController,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-              labelText: 'Fuel Station',
+              labelText: 'Fuel Location',
               hintText: 'e.g. Shell, IndianOil (optional)',
-              prefixIcon: Icon(Icons.local_gas_station_outlined),
+              prefixIcon: Icon(Icons.ev_station_outlined),
             ),
-            validator: (v) => validateMaxLength(v, 100, 'Fuel station'),
+            validator: (v) => validateMaxLength(v, 100, 'Fuel location'),
           ),
 
           const SizedBox(height: AppSizes.spacingMd),
