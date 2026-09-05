@@ -45,35 +45,57 @@ const int kPucCertMaxLength = 50;
 ///
 /// Matches:
 ///   [A-Z]{2}      state code      (e.g. KL, MH, DL)
-///   \d{2}         district code   (e.g. 10, 07)
-///   [A-Z]{1,3}    series code     (e.g. AB, X)
-///   \d{4}         number          (e.g. 1234)
-final RegExp _regRegex = RegExp(r'^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$');
+///   \d{1,2}       district code   (e.g. 10, 07, 5)
+///   [A-Z]{0,3}    series code     (e.g. AB, X, or none)
+///   \d{1,4}       number          (e.g. 1234, 1)
+final RegExp _standardRegRegex = RegExp(r'^([A-Z]{2})(\d{1,2})([A-Z]{0,3})(\d{1,4})$');
+
+/// BH series registration number pattern.
+/// Matches: 21BH1234AA
+final RegExp _bhRegRegex = RegExp(r'^(\d{2})(BH)(\d{4})([A-Z]{1,2})$');
+
+/// Legitimate Indian State and UT vehicle registration prefixes.
+const Set<String> _validStateCodes = {
+  'AN', 'AP', 'AR', 'AS', 'BR', 'CG', 'CH', 'DD', 'DH', 'DL', 'DN', 
+  'GA', 'GJ', 'HR', 'HP', 'JH', 'JK', 'KA', 'KL', 'LA', 'LD', 'MH', 
+  'ML', 'MN', 'MP', 'MZ', 'NL', 'OD', 'PB', 'PY', 'RJ', 'SK', 'TN', 
+  'TR', 'TS', 'TG', 'UK', 'UP', 'WB'
+};
 
 /// Strips separators from a registration number string (spaces and hyphens)
 /// and uppercases it, ready for regex matching.
 String _stripRegistration(String raw) =>
     raw.replaceAll(RegExp(r'[\s\-]'), '').toUpperCase();
 
-/// Normalises an Indian registration number to the canonical spaced format:
-///   KL 10 AB 1234
+/// Normalises an Indian registration number to the canonical spaced format.
+/// Example: KL 5 6556 -> KL 05 6556
 ///
 /// Assumes [raw] has already been validated via [validateRegistrationNumber].
 String normaliseRegistrationNumber(String raw) {
   final s = _stripRegistration(raw);
-  if (s.length < 9) return s.toUpperCase();
+  
+  if (s.length < 4) return s.toUpperCase();
 
-  final state = s.substring(0, 2);
-  final district = s.substring(2, 4);
-  final rest = s.substring(4);
+  final standardMatch = _standardRegRegex.firstMatch(s);
+  if (standardMatch != null) {
+    final state = standardMatch.group(1)!;
+    final district = standardMatch.group(2)!.padLeft(2, '0');
+    final series = standardMatch.group(3)!;
+    final number = standardMatch.group(4)!.padLeft(4, '0');
+    
+    if (series.isEmpty) {
+      return '$state $district $number';
+    } else {
+      return '$state $district $series $number';
+    }
+  }
 
-  // The last 4 characters are always the sequential number.
-  final seriesEnd = rest.length - 4;
-  if (seriesEnd <= 0) return s;
+  final bhMatch = _bhRegRegex.firstMatch(s);
+  if (bhMatch != null) {
+    return '${bhMatch.group(1)} BH ${bhMatch.group(3)} ${bhMatch.group(4)}';
+  }
 
-  final series = rest.substring(0, seriesEnd);
-  final number = rest.substring(seriesEnd);
-  return '$state $district $series $number';
+  return s;
 }
 
 // ─────────────────────────────────────────────
@@ -119,14 +141,30 @@ String? validateManufacturingYear(String? value, {required int currentYear}) {
 }
 
 /// Indian vehicle registration number.
-/// Accepts KL 10 AB 1234, KL10AB1234, KL-10-AB-1234, etc.
+/// Accepts KL 10 AB 1234, KL10AB1234, KL-10-AB-1234, KL 56 6556, etc.
 String? validateRegistrationNumber(String? value) {
   final v = value?.trim() ?? '';
   if (v.isEmpty) return 'Registration number is required.';
-  if (!_regRegex.hasMatch(_stripRegistration(v))) {
-    return 'Enter a valid vehicle registration number.';
+  
+  final s = _stripRegistration(v);
+  
+  // Layer 2 & 3: Structural Validation
+  final standardMatch = _standardRegRegex.firstMatch(s);
+  if (standardMatch != null) {
+    // Validate state code
+    final state = standardMatch.group(1)!;
+    if (!_validStateCodes.contains(state)) {
+      return 'Enter a valid Indian vehicle registration number, such as KL 56 6556.';
+    }
+    return null;
   }
-  return null;
+  
+  final bhMatch = _bhRegRegex.firstMatch(s);
+  if (bhMatch != null) {
+    return null;
+  }
+  
+  return 'Enter a valid Indian vehicle registration number, such as KL 56 6556.';
 }
 
 /// Vehicle color.

@@ -455,7 +455,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           ],
           decoration: const InputDecoration(
             labelText: 'Registration Number *',
-            hintText: 'e.g. KL 10 AB 1234',
+            hintText: 'e.g. KL 56 6556',
           ),
           validator: (v) => validateRegistrationNumber(v),
         ),
