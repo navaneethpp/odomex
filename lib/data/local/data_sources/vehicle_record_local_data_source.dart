@@ -51,12 +51,24 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
 
   final Box<VehicleRecord> _recordBox;
 
+  int _compareRecords(VehicleRecord a, VehicleRecord b) {
+    int cmp = b.date.compareTo(a.date);
+    if (cmp != 0) return cmp;
+
+    final aCreated = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bCreated = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    cmp = bCreated.compareTo(aCreated);
+    if (cmp != 0) return cmp;
+
+    return b.id.compareTo(a.id);
+  }
+
   @override
   List<VehicleRecord> getAllRecords(String vehicleId) {
     final records = _recordBox.values
         .where((r) => r.vehicleId == vehicleId)
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
     return records;
   }
 
@@ -81,7 +93,7 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
             !r.date.isBefore(start) &&
             !r.date.isAfter(end))
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
     return records;
   }
 
@@ -91,7 +103,7 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .whereType<OdometerRecord>()
         .where((r) => r.vehicleId == vehicleId)
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
   }
 
   @override
@@ -100,7 +112,7 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .whereType<FuelRecord>()
         .where((r) => r.vehicleId == vehicleId)
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
   }
 
   @override
@@ -109,7 +121,7 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .whereType<ServiceRecord>()
         .where((r) => r.vehicleId == vehicleId)
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
   }
 
   @override
@@ -118,7 +130,7 @@ class HiveVehicleRecordLocalDataSource implements VehicleRecordLocalDataSource {
         .whereType<OilChangeRecord>()
         .where((r) => r.vehicleId == vehicleId)
         .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+      ..sort(_compareRecords);
   }
 
   @override

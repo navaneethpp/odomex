@@ -4,7 +4,9 @@ import 'package:odomex/core/theme/app_sizes.dart';
 import 'package:odomex/features/vehicle_dashboard/widgets/recent_record_card.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record_type.dart';
+import 'package:odomex/features/vehicle_records/providers/cost_summary_provider.dart';
 import 'package:odomex/features/vehicle_records/providers/vehicle_record_provider.dart';
+import 'package:odomex/features/vehicle_records/services/cost_summary_calculator.dart';
 import 'package:odomex/features/vehicle_records/widgets/add_vehicle_record_sheet.dart';
 import 'package:odomex/features/vehicle_records/widgets/vehicle_cost_summary_card.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
@@ -31,9 +33,21 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
   Widget build(BuildContext context) {
     final vehicle = ref.watch(vehicleByIdProvider(widget.vehicleId));
     final allRecords = ref.watch(recordsByVehicleProvider(widget.vehicleId));
+    final selectedPeriod = ref.watch(costPeriodProvider(widget.vehicleId));
+    final selectedDate = ref.watch(costSelectedDateProvider(widget.vehicleId));
 
-    // Filter records
+    // Filter records by date/period and category
     final filteredRecords = allRecords.where((r) {
+      // 1. Date filter
+      if (!CostSummaryCalculator.isDateInPeriod(
+        recordDate: r.date,
+        selectedDate: selectedDate,
+        period: selectedPeriod,
+      )) {
+        return false;
+      }
+
+      // 2. Category filter
       if (_selectedFilter == null) return true;
       switch (_selectedFilter!) {
         case VehicleRecordType.odometer:
@@ -73,7 +87,7 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
             child: Row(
               children: [
                 _buildFilterChip(
-                  label: 'All (${allRecords.length})',
+                  label: 'All (${allRecords.where((r) => CostSummaryCalculator.isDateInPeriod(recordDate: r.date, selectedDate: selectedDate, period: selectedPeriod)).length})',
                   isSelected: _selectedFilter == null,
                   onTap: () => setState(() => _selectedFilter = null),
                 ),
@@ -81,6 +95,13 @@ class _VehicleRecordsScreenState extends ConsumerState<VehicleRecordsScreen> {
                 ...VehicleRecordType.values.map((type) {
                   final isSelected = _selectedFilter == type;
                   final count = allRecords.where((r) {
+                    if (!CostSummaryCalculator.isDateInPeriod(
+                      recordDate: r.date,
+                      selectedDate: selectedDate,
+                      period: selectedPeriod,
+                    )) {
+                      return false;
+                    }
                     switch (type) {
                       case VehicleRecordType.odometer:
                         return r is OdometerRecord;
