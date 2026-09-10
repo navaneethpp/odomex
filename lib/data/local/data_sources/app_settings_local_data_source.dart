@@ -153,22 +153,14 @@ class HiveAppSettingsLocalDataSource implements AppSettingsLocalDataSource {
 
   @override
   bool isOnboardingCompleted() {
-    final box = _settingsBox;
-    if (box != null) {
-      final val = box.get(_onboardingCompletedKey);
-      if (val is bool) {
-        return val;
-      }
-    }
-    return false;
+    return _settingsBox?.get(_onboardingCompletedKey, defaultValue: false)
+            as bool? ??
+        false;
   }
 
   @override
   Future<void> setOnboardingCompleted(bool completed) async {
-    final box = _settingsBox;
-    if (box != null) {
-      await box.put(_onboardingCompletedKey, completed);
-    }
+    await _settingsBox?.put(_onboardingCompletedKey, completed);
   }
 
   @override

@@ -75,14 +75,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             AppRoutes.privacyConsent,
             arguments: {
               'isFirstLaunch': true,
-              'targetRoute': AppRoutes.addVehicle,
+              'targetRoute': AppRoutes.home,
             },
           );
         }
       } else {
         await ref.read(onboardingCompletedProvider.notifier).completeOnboarding();
         if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.addVehicle);
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
         }
       }
     }

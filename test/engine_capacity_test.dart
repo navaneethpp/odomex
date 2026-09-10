@@ -499,7 +499,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open Add Vehicle screen from FloatingActionButton
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.text('Add Vehicle'));
       await tester.pumpAndSettle();
 
       // Fill brand

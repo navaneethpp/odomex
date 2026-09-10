@@ -200,7 +200,7 @@ void main() {
               if (settings.name == AppRoutes.addVehicle) {
                 return MaterialPageRoute(
                     builder: (_) =>
-                        const Scaffold(body: Text('Add Vehicle Screen')));
+                        const Scaffold(body: Text('Home Screen')));
               }
               return AppRoutes.onGenerateRoute(settings);
             },
@@ -247,7 +247,7 @@ void main() {
 
       expect(fakeSettings.isOnboardingCompleted(), isTrue);
       expect(fakeSettings.getPrivacyPolicyAcceptedVersion(), '1.0');
-      expect(find.text('Add Vehicle Screen'), findsOneWidget);
+      expect(find.text('Home Screen'), findsOneWidget);
     });
 
     testWidgets('tapping Skip completes onboarding and navigates to Home via privacy consent',
@@ -279,7 +279,7 @@ void main() {
               if (settings.name == AppRoutes.addVehicle) {
                 return MaterialPageRoute(
                     builder: (_) =>
-                        const Scaffold(body: Text('Add Vehicle Screen')));
+                        const Scaffold(body: Text('Home Screen')));
               }
               return AppRoutes.onGenerateRoute(settings);
             },

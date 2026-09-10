@@ -260,6 +260,7 @@ extension EngineCapacityUnitExtension on EngineCapacityUnit {
 class Vehicle {
   Vehicle({
     String? id,
+    this.isDemo = false,
     VehicleType? vehicleType,
     required this.brand,
     this.customBrand,
@@ -306,6 +307,13 @@ class Vehicle {
 
   /// Stable, unique identifier for this vehicle.
   final String id;
+
+  // ─────────────────────────────────────────────
+  // DEMO IDENTIFICATION
+  // ─────────────────────────────────────────────
+
+  /// Indicates if this vehicle is sample demo data.
+  final bool isDemo;
 
   static String _generateId() {
     final ts = DateTime.now().microsecondsSinceEpoch;
@@ -552,9 +560,8 @@ class Vehicle {
 
   // ─────────────────────────────────────────────
   // COPY WITH
-  // ─────────────────────────────────────────────
-
   Vehicle copyWith({
+    bool? isDemo,
     VehicleType? vehicleType,
     VehicleBrand? brand,
     String? customBrand,
@@ -584,6 +591,7 @@ class Vehicle {
   }) {
     return Vehicle(
       id: id,
+      isDemo: isDemo ?? this.isDemo,
       vehicleType: vehicleType ?? this.vehicleType,
       brand: brand ?? this.brand,
       customBrand: customBrand ?? this.customBrand,

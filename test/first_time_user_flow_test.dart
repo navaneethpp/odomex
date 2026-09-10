@@ -187,6 +187,9 @@ void main() {
       await tester.tap(find.text('I Understand & Continue'));
       await tester.pumpAndSettle();
 
+      expect(find.byType(HomeScreen), findsOneWidget);
+      await tester.tap(find.text('Add Vehicle'));
+      await tester.pumpAndSettle();
       expect(find.byType(AddVehicleScreen), findsOneWidget);
 
       // 4. Fill required vehicle fields
@@ -283,7 +286,7 @@ void main() {
       expect(find.byType(HomeScreen), findsOneWidget);
 
       // Open Add Vehicle from FloatingActionButton
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.text('Add Vehicle'));
       await tester.pumpAndSettle();
 
       expect(find.byType(AddVehicleScreen), findsOneWidget);

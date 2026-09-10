@@ -65,13 +65,14 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       vehicleType: vehicleType,
       customBrand: fields[25] as String?,
       powertrainType: fields[26] as PowertrainType?,
+      isDemo: fields[27] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, Vehicle obj) {
     writer
-      ..writeByte(27) // Total fields
+      ..writeByte(28) // Total fields
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -125,6 +126,8 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       ..writeByte(25)
       ..write(obj.customBrand)
       ..writeByte(26)
-      ..write(obj.powertrainType);
+      ..write(obj.powertrainType)
+      ..writeByte(27)
+      ..write(obj.isDemo);
   }
 }

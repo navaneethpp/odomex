@@ -57,26 +57,51 @@ class DashboardHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSizes.spacingXs),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.paddingSm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    width: AppSizes.borderWidth,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.paddingSm,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        width: AppSizes.borderWidth,
+                      ),
+                    ),
+                    child: Text(
+                      vehicle.registrationNumber,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  vehicle.registrationNumber,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                  if (vehicle.isDemo) ...[
+                    const SizedBox(width: AppSizes.spacingSm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.paddingSm,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
+                      child: Text(
+                        'DEMO',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.onTertiaryContainer,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

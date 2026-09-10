@@ -37,7 +37,7 @@ class AppSettingsRepository {
   Future<void> saveVehicleSortOption(VehicleSortOption option) =>
       localDataSource.saveVehicleSortOption(option);
 
-  /// Returns whether the onboarding flow has been completed.
+  /// Returns whether the first-time onboarding has been completed.
   bool isOnboardingCompleted() => localDataSource.isOnboardingCompleted();
 
   /// Sets and persists onboarding completion status.

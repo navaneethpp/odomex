@@ -10,6 +10,7 @@ import 'package:odomex/models/vehicle.dart';
 import 'package:odomex/providers/vehicle_preferences_provider.dart';
 import 'package:odomex/providers/vehicle_provider.dart';
 import 'package:odomex/routes/app_routes.dart';
+import 'package:odomex/screens/HomeScreen/widgets/empty_vehicle_state.dart';
 import 'package:odomex/screens/HomeScreen/widgets/vehicle_card.dart';
 import 'package:odomex/widgets/screen_container.dart';
 
@@ -134,12 +135,14 @@ class HomeScreen extends ConsumerWidget {
           tooltip: 'Settings',
         ),
       ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addVehicle(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: vehicles.isEmpty
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _addVehicle(context),
+              child: const Icon(Icons.add),
+            ),
       child: vehicles.isEmpty
-          ? _buildEmptyState(context)
+          ? const EmptyVehicleState()
           : ListView.separated(
               itemCount: vehicles.length,
               separatorBuilder: (context, index) =>
@@ -163,33 +166,5 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.directions_car_outlined,
-            size: AppSizes.iconXl * 2,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSizes.spacingLg),
-          Text(
-            'No vehicles yet',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSizes.spacingSm),
-          Text(
-            'Tap + to add your first vehicle',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

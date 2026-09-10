@@ -319,7 +319,7 @@ void main() {
       // Home Screen with empty state
       expect(find.text('Available Vehicles'), findsOneWidget);
       expect(find.text('No vehicles yet'), findsOneWidget);
-      expect(find.text('Tap + to add your first vehicle'), findsOneWidget);
+      expect(find.text('Add your vehicle to start tracking your daily usage, fuel, costs and maintenance.'), findsOneWidget);
       expect(fakeAppSettingsDataSource.isOnboardingCompleted(), true);
     });
 

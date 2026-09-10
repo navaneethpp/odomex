@@ -4,6 +4,7 @@ import 'package:odomex/features/onboarding/providers/onboarding_provider.dart';
 import 'package:odomex/features/onboarding/screens/onboarding_screen.dart';
 import 'package:odomex/features/privacy/providers/privacy_consent_provider.dart';
 import 'package:odomex/features/privacy/screens/privacy_consent_screen.dart';
+
 import 'package:odomex/routes/app_routes.dart';
 import 'package:odomex/screens/HomeScreen/home_screen.dart';
 
@@ -28,6 +29,7 @@ class AppStartupScreen extends ConsumerWidget {
         targetRoute: AppRoutes.home,
       );
     }
+
 
     return const HomeScreen();
   }
