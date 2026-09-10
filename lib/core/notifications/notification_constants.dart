@@ -28,16 +28,24 @@ class NotificationConstants {
   static const int dailyActivityNotificationId = 1100;
 
   /// Base notification ID for PUC expiry reminders (one ID per vehicle: base + vehicleHash).
-  static const int pucReminderIdBase = 2000;
+  static const int pucReminderIdBase = 100000;
 
   /// Base notification ID for insurance expiry reminders.
-  static const int insuranceReminderIdBase = 3000;
+  static const int insuranceReminderIdBase = 200000;
 
   /// Base notification ID for service due reminders.
-  static const int serviceReminderIdBase = 4000;
+  static const int serviceReminderIdBase = 300000;
 
   /// Base notification ID for oil change due reminders.
-  static const int oilChangeReminderIdBase = 5000;
+  static const int oilChangeReminderIdBase = 400000;
+
+  // ── Legacy Notification ID Bases (for migration cleanup) ───
+  /// @deprecated Old base IDs used before the hash-space expansion.
+  /// Retained solely to cancel orphaned notifications from the old scheme.
+  static const int legacyPucReminderIdBase = 2000;
+  static const int legacyInsuranceReminderIdBase = 3000;
+  static const int legacyServiceReminderIdBase = 4000;
+  static const int legacyOilChangeReminderIdBase = 5000;
 
   // ── Daily Activity Defaults & Content ─────────────────────
   static const int defaultDailyActivityHour = 20;
@@ -111,10 +119,23 @@ class NotificationConstants {
 
   /// Computes a deterministic, collision-resistant notification ID for a vehicle and reminder type.
   ///
-  /// Uses the last 3 digits of the vehicle ID hash to offset from the base.
-  /// Range: [base, base + 999]. If two vehicle IDs happen to collide they would overwrite
-  /// each other, which is acceptable — the notification still fires for the correct type.
+  /// Uses an FNV-1a inspired hash with 100,000 buckets per category.
+  /// Range: [base, base + 99999]. Much lower collision probability than
+  /// the previous 1,000-bucket scheme.
   static int vehicleNotificationId(int base, String vehicleId) {
+    // FNV-1a inspired mixing for better distribution across the ID space.
+    int hash = 0x811c9dc5; // FNV offset basis
+    for (int i = 0; i < vehicleId.length; i++) {
+      hash ^= vehicleId.codeUnitAt(i);
+      hash = (hash * 0x01000193) & 0x7FFFFFFF; // FNV prime, masked to 31 bits
+    }
+    return base + (hash % 100000);
+  }
+
+  /// Computes a notification ID using the **legacy** hash algorithm.
+  ///
+  /// Used only for cancelling orphaned notifications from the old ID scheme.
+  static int legacyVehicleNotificationId(int base, String vehicleId) {
     final hash = vehicleId.hashCode.abs() % 1000;
     return base + hash;
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
@@ -125,6 +126,12 @@ class FakeNotificationService implements NotificationService {
   Future<void> cancelAll() async {
     cancelCallCount++;
   }
+
+  @override
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async => [];
+
+  @override
+  Future<int> debugPrintPendingNotifications() async => 0;
 }
 
 class FakeVehicleLocalDataSource implements VehicleLocalDataSource {

@@ -400,6 +400,7 @@ class NotificationService {
 
       debugPrint('[Notifications] Daily Activity notification scheduled:');
       debugPrint('[Notifications] Configured time: ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}');
+      debugPrint('[Notifications] Schedule mode: RECURRING DAILY (DateTimeComponents.time — OS repeats automatically)');
       debugPrint('[Notifications] Current time: ${tz.TZDateTime.now(tz.local)}');
       debugPrint('[Notifications] Next scheduled time: $scheduledDate');
       debugPrint('[Notifications] Notification ID: $id');
@@ -420,6 +421,14 @@ class NotificationService {
     String? payload,
     DateTimeComponents? matchDateTimeComponents,
   }) async {
+    final now = tz.TZDateTime.now(tz.local);
+    debugPrint('[Notifications] Scheduling reminder');
+    debugPrint('[Notifications]   id: $id');
+    debugPrint('[Notifications]   now: $now');
+    debugPrint('[Notifications]   timezone: $_localTimeZoneName');
+    debugPrint('[Notifications]   scheduledFor: $scheduledDate');
+    debugPrint('[Notifications]   recurring: ${matchDateTimeComponents != null ? 'yes ($matchDateTimeComponents)' : 'no (one-shot)'}');
+
     try {
       await _plugin.zonedSchedule(
         id: id,
@@ -431,22 +440,39 @@ class NotificationService {
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
       );
-      debugPrint('[Notifications] Scheduled with EXACT alarm mode (id=$id)');
+      debugPrint('[Notifications]   mode: exact');
+      debugPrint('[Notifications] Scheduled successfully (id=$id, scheduledFor=$scheduledDate)');
     } on PlatformException catch (e) {
       // Android 12+ throws PlatformException when SCHEDULE_EXACT_ALARM is not granted.
       // Fall back to inexact which fires approximately at the right time (±15 min).
-      debugPrint('[Notifications] Exact alarm denied (${e.message}). Falling back to inexact alarm for id=$id');
-      await _plugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-        notificationDetails: details,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: matchDateTimeComponents,
-        payload: payload,
-      );
-      debugPrint('[Notifications] Scheduled with INEXACT alarm mode (id=$id)');
+      debugPrint('[Notifications] Exact alarm unavailable');
+      debugPrint('[Notifications]   id: $id');
+      debugPrint('[Notifications]   error: ${e.message}');
+      debugPrint('[Notifications]   falling back to inexactAllowWhileIdle');
+      try {
+        await _plugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: matchDateTimeComponents,
+          payload: payload,
+        );
+        debugPrint('[Notifications]   mode: inexact');
+        debugPrint('[Notifications] Scheduled successfully with INEXACT mode (id=$id, scheduledFor=$scheduledDate)');
+      } catch (fallbackError, fallbackSt) {
+        debugPrint('[Notifications] FAILED to schedule (inexact fallback also failed)');
+        debugPrint('[Notifications]   id: $id');
+        debugPrint('[Notifications]   error: $fallbackError');
+        debugPrint('[Notifications]   stackTrace: $fallbackSt');
+      }
+    } catch (e, st) {
+      debugPrint('[Notifications] FAILED to schedule');
+      debugPrint('[Notifications]   id: $id');
+      debugPrint('[Notifications]   error: $e');
+      debugPrint('[Notifications]   stackTrace: $st');
     }
   }
 
@@ -567,5 +593,35 @@ class NotificationService {
     } catch (e) {
       debugPrint('[Notifications] Failed to cancel all notifications: $e');
     }
+  }
+
+  // ── Diagnostics ─────────────────────────────────────
+
+  /// Returns all currently pending (scheduled but not yet delivered) notification requests.
+  ///
+  /// Useful for verifying that `zonedSchedule()` actually registered an alarm
+  /// with the Android OS, and for distinguishing "Odomex never scheduled it"
+  /// from "Odomex scheduled it but Android did not deliver it".
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    if (!_isInitialized) return [];
+    try {
+      return await _plugin.pendingNotificationRequests();
+    } catch (e) {
+      debugPrint('[Notifications] Failed to query pending notifications: $e');
+      return [];
+    }
+  }
+
+  /// Logs all pending notification requests to the debug console.
+  ///
+  /// Development diagnostic helper — should not be exposed in production UI.
+  Future<int> debugPrintPendingNotifications() async {
+    final pending = await getPendingNotifications();
+    debugPrint('[Notifications] ── Pending notifications: ${pending.length} ──');
+    for (final p in pending) {
+      debugPrint('[Notifications]   id=${p.id}, title="${p.title}", payload=${p.payload}');
+    }
+    debugPrint('[Notifications] ── End pending notifications ──');
+    return pending.length;
   }
 }

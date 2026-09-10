@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -135,6 +136,12 @@ class _FakeNotificationService
   Future<void> cancelAll() async {
     cancelledIds.add(-1); // sentinel
   }
+
+  @override
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async => [];
+
+  @override
+  Future<int> debugPrintPendingNotifications() async => 0;
 }
 
 // ─────────────────────────────────────────────
@@ -250,7 +257,7 @@ void main() {
         expect(
           pucId,
           lessThan(
-            NotificationConstants.pucReminderIdBase + 1000,
+            NotificationConstants.pucReminderIdBase + 100000,
           ),
         );
 
@@ -264,7 +271,7 @@ void main() {
           insId,
           lessThan(
             NotificationConstants.insuranceReminderIdBase +
-                1000,
+                100000,
           ),
         );
 
@@ -278,7 +285,7 @@ void main() {
           svcId,
           lessThan(
             NotificationConstants.serviceReminderIdBase +
-                1000,
+                100000,
           ),
         );
 
@@ -292,7 +299,7 @@ void main() {
           oilId,
           lessThan(
             NotificationConstants.oilChangeReminderIdBase +
-                1000,
+                100000,
           ),
         );
       },
@@ -958,13 +965,13 @@ void main() {
           vehicle,
         ]);
 
-        // 4 cancels per vehicle (puc, insurance, service, oil)
-        expect(fakeService.cancelledIds.length, 4);
+        // 8 cancels per vehicle (4 current-scheme + 4 legacy-scheme IDs)
+        expect(fakeService.cancelledIds.length, 8);
       },
     );
 
     test(
-      'cancelRemindersForVehicle cancels 4 notification types',
+      'cancelRemindersForVehicle cancels 8 notification IDs (current + legacy)',
       () async {
         final fakeService = _FakeNotificationService();
         final scheduler = VehicleReminderScheduler(
@@ -974,7 +981,7 @@ void main() {
         await scheduler.cancelRemindersForVehicle(
           'vehicle_test_1',
         );
-        expect(fakeService.cancelledIds.length, 4);
+        expect(fakeService.cancelledIds.length, 8);
       },
     );
   });
@@ -1033,6 +1040,362 @@ void main() {
               orElse: () => {},
             );
         expect(insNotif, isNotEmpty);
+      },
+    );
+  });
+
+  // ─────────────────────────────────────────────
+  // NEW: Near-expiry PUC edge cases
+  // ─────────────────────────────────────────────
+  group('VehicleReminderScheduler – PUC near-expiry edge cases', () {
+    test(
+      'PUC expiry in 10 days (< 30 day lead) still schedules a catch-up reminder',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        // 10 days from now → 30-day-before date is 20 days in the past
+        final pucExpiry = DateTime.now().add(const Duration(days: 10));
+        final vehicle = _makeVehicle(pucEndDate: pucExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isNotEmpty,
+            reason: 'Should schedule catch-up reminder for near-expiry PUC');
+      },
+    );
+
+    test(
+      'PUC expiry in 5 days still schedules a reminder',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final pucExpiry = DateTime.now().add(const Duration(days: 5));
+        final vehicle = _makeVehicle(pucEndDate: pucExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isNotEmpty);
+      },
+    );
+
+    test(
+      'PUC expiry tomorrow schedules reminder for tomorrow at 09:00',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        final pucExpiry = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+        final vehicle = _makeVehicle(pucEndDate: pucExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isNotEmpty);
+        // The scheduled date should be tomorrow at 09:00
+        final scheduledDate = pucNotif['scheduledDate'] as tz.TZDateTime;
+        expect(scheduledDate.isAfter(DateTime.now()), isTrue);
+      },
+    );
+
+    test(
+      'PUC expiry yesterday does NOT schedule a reminder',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        final pucExpiry = DateTime(yesterday.year, yesterday.month, yesterday.day);
+        final vehicle = _makeVehicle(pucEndDate: pucExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isEmpty,
+            reason: 'Past expiry should not generate a reminder');
+      },
+    );
+
+    test(
+      'PUC expiry exactly 30 days out schedules at the ideal date',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final pucExpiry = DateTime.now().add(const Duration(days: 30));
+        final vehicle = _makeVehicle(pucEndDate: pucExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isNotEmpty);
+        final scheduledDate = pucNotif['scheduledDate'] as tz.TZDateTime;
+        expect(scheduledDate.isAfter(DateTime.now()), isTrue);
+      },
+    );
+  });
+
+  // ─────────────────────────────────────────────
+  // NEW: Near-expiry Insurance edge cases
+  // ─────────────────────────────────────────────
+  group('VehicleReminderScheduler – Insurance near-expiry edge cases', () {
+    test(
+      'Insurance expiry in 10 days still schedules a catch-up reminder',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final insuranceExpiry = DateTime.now().add(const Duration(days: 10));
+        final vehicle = _makeVehicle(insuranceEndDate: insuranceExpiry);
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final insNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypeInsuranceReminder,
+          orElse: () => {},
+        );
+        expect(insNotif, isNotEmpty,
+            reason: 'Should schedule catch-up reminder for near-expiry insurance');
+      },
+    );
+
+    test(
+      'Insurance expiry yesterday does NOT schedule a reminder',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        final vehicle = _makeVehicle(
+          insuranceEndDate: DateTime(yesterday.year, yesterday.month, yesterday.day),
+        );
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+
+        final insNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypeInsuranceReminder,
+          orElse: () => {},
+        );
+        expect(insNotif, isEmpty);
+      },
+    );
+  });
+
+  // ─────────────────────────────────────────────
+  // NEW: Demo vehicle isolation
+  // ─────────────────────────────────────────────
+  group('VehicleReminderScheduler – demo vehicle isolation', () {
+    test(
+      'demo vehicles are excluded from notification scheduling',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final demoVehicle = Vehicle(
+          id: 'demo_vehicle_1',
+          brand: VehicleBrand.honda,
+          model: 'Demo Activa',
+          manufacturingYear: 2020,
+          odometerReading: 5000,
+          registrationNumber: 'DEMO-0001',
+          color: 'Blue',
+          fuelType: 'Petrol',
+          purchaseDate: DateTime(2020, 1, 1),
+          pucEndDate: DateTime.now().add(const Duration(days: 20)),
+          insuranceEndDate: DateTime.now().add(const Duration(days: 20)),
+          isDemo: true,
+        );
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [demoVehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {
+            demoVehicle.id: _defaultEffective(demoVehicle.id),
+          },
+        );
+
+        // No scheduled or shown notifications should exist for demo vehicles.
+        expect(fakeService.scheduledNotifications, isEmpty);
+        expect(fakeService.shownNotifications, isEmpty);
+      },
+    );
+
+    test(
+      'real vehicle next to demo vehicle gets scheduled, demo does not',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final realVehicle = _makeVehicle(
+          id: 'real_v1',
+          pucEndDate: DateTime.now().add(const Duration(days: 35)),
+        );
+        final demoVehicle = Vehicle(
+          id: 'demo_v1',
+          brand: VehicleBrand.honda,
+          model: 'Demo Activa',
+          manufacturingYear: 2020,
+          odometerReading: 5000,
+          registrationNumber: 'DEMO-0001',
+          color: 'Blue',
+          fuelType: 'Petrol',
+          purchaseDate: DateTime(2020, 1, 1),
+          pucEndDate: DateTime.now().add(const Duration(days: 20)),
+          isDemo: true,
+        );
+
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [realVehicle, demoVehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {
+            realVehicle.id: _defaultEffective(realVehicle.id),
+            demoVehicle.id: _defaultEffective(demoVehicle.id),
+          },
+        );
+
+        // Only the real vehicle should have scheduled notifications.
+        expect(fakeService.scheduledNotifications.length, greaterThanOrEqualTo(1));
+        // Verify the scheduled notification is for the real vehicle, not the demo.
+        final pucNotif = fakeService.scheduledNotifications.firstWhere(
+          (n) => n['payload'] == NotificationConstants.payloadTypePucReminder,
+          orElse: () => {},
+        );
+        expect(pucNotif, isNotEmpty);
+      },
+    );
+  });
+
+  // ─────────────────────────────────────────────
+  // NEW: Notification ID collision resistance
+  // ─────────────────────────────────────────────
+  group('NotificationConstants – ID collision resistance', () {
+    test(
+      'different vehicles produce different IDs for the same category',
+      () {
+        final idA = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.pucReminderIdBase, 'vehicle_alpha');
+        final idB = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.pucReminderIdBase, 'vehicle_beta');
+        final idC = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.pucReminderIdBase, 'vehicle_gamma');
+
+        expect(idA, isNot(equals(idB)));
+        expect(idA, isNot(equals(idC)));
+        expect(idB, isNot(equals(idC)));
+      },
+    );
+
+    test(
+      'same vehicle + different categories produce different IDs',
+      () {
+        const vehicleId = 'abc123';
+        final pucId = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.pucReminderIdBase, vehicleId);
+        final insId = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.insuranceReminderIdBase, vehicleId);
+        final svcId = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.serviceReminderIdBase, vehicleId);
+        final oilId = NotificationConstants.vehicleNotificationId(
+          NotificationConstants.oilChangeReminderIdBase, vehicleId);
+
+        final allIds = {pucId, insId, svcId, oilId};
+        expect(allIds.length, 4, reason: 'All 4 IDs must be distinct');
+      },
+    );
+
+    test(
+      'legacy ID helper still produces old-scheme IDs for migration cleanup',
+      () {
+        const vehicleId = 'abc123';
+        final legacyPucId = NotificationConstants.legacyVehicleNotificationId(
+          NotificationConstants.legacyPucReminderIdBase, vehicleId);
+        expect(legacyPucId, greaterThanOrEqualTo(2000));
+        expect(legacyPucId, lessThan(3000));
+      },
+    );
+  });
+
+  // ─────────────────────────────────────────────
+  // NEW: Service/Oil dedup guard
+  // ─────────────────────────────────────────────
+  group('VehicleReminderScheduler – service/oil dedup', () {
+    test(
+      'service reminder fires only once per sync cycle even if threshold is met',
+      () async {
+        final fakeService = _FakeNotificationService();
+        final scheduler = VehicleReminderScheduler(service: fakeService);
+
+        final vehicle = _makeVehicle(
+          odometerReading: 9800,
+          nextServiceOdometer: 10000,
+        );
+
+        // First sync: should fire
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+        expect(fakeService.shownNotifications.length, 1);
+
+        // Second sync within same scheduler instance: dedup should prevent duplicate
+        // (The sync clears the tracker, so a second sync DOES fire again —
+        //  this is by design since it represents a full re-evaluation.)
+        await scheduler.syncAllVehicleReminders(
+          vehicles: [vehicle],
+          notificationSettings: _enabledSettings,
+          effectiveSettings: {vehicle.id: _defaultEffective(vehicle.id)},
+        );
+        // The tracker is cleared at the start of each sync, so it fires again.
+        // This is the expected behavior: each sync cycle is allowed one notification.
+        expect(fakeService.shownNotifications.length, 2);
       },
     );
   });

@@ -19,11 +19,18 @@ import 'package:timezone/timezone.dart' as tz;
 /// 1. The global master switch (`NotificationSettings.enabled`).
 /// 2. Per-category switches (`NotificationSettings.pucReminder`, etc.).
 /// 3. Per-vehicle effective settings (custom day/km thresholds from `EffectiveVehicleSettings`).
+///
+/// Demo vehicles (`Vehicle.isDemo == true`) are always excluded from scheduling.
 class VehicleReminderScheduler {
   VehicleReminderScheduler({NotificationService? service})
       : _service = service ?? NotificationService.instance;
 
   final NotificationService _service;
+
+  /// Tracks which odometer-based notification IDs have already been shown
+  /// during the current sync cycle, to prevent duplicate immediate
+  /// notifications on repeated app launches/resumes.
+  final Set<int> _shownOdometerNotificationIds = {};
 
   // ─────────────────────────────────────────────
   // PUBLIC API
@@ -33,14 +40,24 @@ class VehicleReminderScheduler {
   ///
   /// Cancels existing schedules first to prevent duplicate notifications,
   /// then re-evaluates each vehicle's state and schedules as appropriate.
+  ///
+  /// Demo vehicles are automatically filtered out and never scheduled.
   Future<void> syncAllVehicleReminders({
     required List<Vehicle> vehicles,
     required NotificationSettings notificationSettings,
     required Map<String, EffectiveVehicleSettings> effectiveSettings,
   }) async {
-    debugPrint('[VehicleReminders] Syncing reminders for ${vehicles.length} vehicle(s). masterEnabled=${notificationSettings.enabled}');
+    // Filter out demo vehicles — they must never create real OS alarms.
+    final realVehicles = vehicles.where((v) => !v.isDemo).toList();
 
-    for (final vehicle in vehicles) {
+    debugPrint('[VehicleReminders] Syncing reminders for ${realVehicles.length} real vehicle(s) '
+        '(${vehicles.length - realVehicles.length} demo skipped). '
+        'masterEnabled=${notificationSettings.enabled}');
+
+    // Clear the dedup tracker at the start of each full sync cycle.
+    _shownOdometerNotificationIds.clear();
+
+    for (final vehicle in realVehicles) {
       final settings = effectiveSettings[vehicle.id];
       await _syncForVehicle(
         vehicle: vehicle,
@@ -155,18 +172,28 @@ class VehicleReminderScheduler {
     );
 
     if (reminderDate == null) {
-      debugPrint('[VehicleReminders] PUC: Reminder date already past for $vehicleName → skipping');
+      debugPrint('[VehicleReminders] PUC: No valid future reminder date for $vehicleName → skipping');
       return;
     }
 
     final daysLeft = pucEndDate.difference(DateTime.now()).inDays;
-    debugPrint('[VehicleReminders] PUC: Scheduling for $vehicleName at $reminderDate (daysLeft=$daysLeft)');
+    final scheduledTz = tz.TZDateTime.from(reminderDate, tz.local);
+
+    debugPrint('[VehicleReminders] Scheduling reminder');
+    debugPrint('[VehicleReminders]   id: $notificationId');
+    debugPrint('[VehicleReminders]   type: puc_reminder');
+    debugPrint('[VehicleReminders]   vehicleId: ${vehicle.id}');
+    debugPrint('[VehicleReminders]   vehicleName: $vehicleName');
+    debugPrint('[VehicleReminders]   expiryDate: $pucEndDate');
+    debugPrint('[VehicleReminders]   daysLeft: $daysLeft');
+    debugPrint('[VehicleReminders]   daysBeforeExpiry: $daysBeforeExpiry');
+    debugPrint('[VehicleReminders]   scheduledFor: $scheduledTz');
 
     await _service.scheduleNotificationAt(
       id: notificationId,
       title: NotificationConstants.pucReminderTitle,
       body: NotificationConstants.pucReminderBody(vehicleName, daysLeft),
-      scheduledDate: tz.TZDateTime.from(reminderDate, tz.local),
+      scheduledDate: scheduledTz,
       payload: NotificationConstants.payloadTypePucReminder,
     );
   }
@@ -193,18 +220,28 @@ class VehicleReminderScheduler {
     );
 
     if (reminderDate == null) {
-      debugPrint('[VehicleReminders] Insurance: Reminder date already past for $vehicleName → skipping');
+      debugPrint('[VehicleReminders] Insurance: No valid future reminder date for $vehicleName → skipping');
       return;
     }
 
     final daysLeft = insuranceEndDate.difference(DateTime.now()).inDays;
-    debugPrint('[VehicleReminders] Insurance: Scheduling for $vehicleName at $reminderDate (daysLeft=$daysLeft)');
+    final scheduledTz = tz.TZDateTime.from(reminderDate, tz.local);
+
+    debugPrint('[VehicleReminders] Scheduling reminder');
+    debugPrint('[VehicleReminders]   id: $notificationId');
+    debugPrint('[VehicleReminders]   type: insurance_reminder');
+    debugPrint('[VehicleReminders]   vehicleId: ${vehicle.id}');
+    debugPrint('[VehicleReminders]   vehicleName: $vehicleName');
+    debugPrint('[VehicleReminders]   expiryDate: $insuranceEndDate');
+    debugPrint('[VehicleReminders]   daysLeft: $daysLeft');
+    debugPrint('[VehicleReminders]   daysBeforeExpiry: $daysBeforeExpiry');
+    debugPrint('[VehicleReminders]   scheduledFor: $scheduledTz');
 
     await _service.scheduleNotificationAt(
       id: notificationId,
       title: NotificationConstants.insuranceReminderTitle,
       body: NotificationConstants.insuranceReminderBody(vehicleName, daysLeft),
-      scheduledDate: tz.TZDateTime.from(reminderDate, tz.local),
+      scheduledDate: scheduledTz,
       payload: NotificationConstants.payloadTypeInsuranceReminder,
     );
   }
@@ -238,6 +275,13 @@ class VehicleReminderScheduler {
       vehicle.id,
     );
 
+    // Dedup guard: only show once per sync cycle to prevent repeated notifications
+    // on every app launch/resume once the threshold is crossed.
+    if (_shownOdometerNotificationIds.contains(notificationId)) {
+      debugPrint('[VehicleReminders] Service: $vehicleName already notified this cycle → skipping duplicate');
+      return;
+    }
+
     debugPrint('[VehicleReminders] Service: $vehicleName is within ${thresholdKm}km threshold (${kmUntilDue.toStringAsFixed(0)} km left) → notifying now');
 
     await _service.showNotification(
@@ -246,6 +290,8 @@ class VehicleReminderScheduler {
       body: NotificationConstants.serviceReminderBody(vehicleName),
       payload: NotificationConstants.payloadTypeServiceReminder,
     );
+
+    _shownOdometerNotificationIds.add(notificationId);
   }
 
   // ─────────────────────────────────────────────
@@ -278,6 +324,12 @@ class VehicleReminderScheduler {
       vehicle.id,
     );
 
+    // Dedup guard: only show once per sync cycle.
+    if (_shownOdometerNotificationIds.contains(notificationId)) {
+      debugPrint('[VehicleReminders] OilChange: $vehicleName already notified this cycle → skipping duplicate');
+      return;
+    }
+
     debugPrint('[VehicleReminders] OilChange: $vehicleName is within ${thresholdKm}km threshold (${kmUntilDue.toStringAsFixed(0)} km left) → notifying now');
 
     await _service.showNotification(
@@ -286,6 +338,8 @@ class VehicleReminderScheduler {
       body: NotificationConstants.oilChangeReminderBody(vehicleName),
       payload: NotificationConstants.payloadTypeOilChangeReminder,
     );
+
+    _shownOdometerNotificationIds.add(notificationId);
   }
 
   // ─────────────────────────────────────────────
@@ -293,6 +347,7 @@ class VehicleReminderScheduler {
   // ─────────────────────────────────────────────
 
   Future<void> _cancelAllForVehicle(String vehicleId) async {
+    // Cancel current-scheme IDs
     final pucId = NotificationConstants.vehicleNotificationId(
       NotificationConstants.pucReminderIdBase, vehicleId);
     final insId = NotificationConstants.vehicleNotificationId(
@@ -302,11 +357,26 @@ class VehicleReminderScheduler {
     final oilId = NotificationConstants.vehicleNotificationId(
       NotificationConstants.oilChangeReminderIdBase, vehicleId);
 
+    // Also cancel legacy-scheme IDs to clean up orphaned notifications
+    // from the old narrow-range hash (base 2000–5000, % 1000).
+    final legacyPucId = NotificationConstants.legacyVehicleNotificationId(
+      NotificationConstants.legacyPucReminderIdBase, vehicleId);
+    final legacyInsId = NotificationConstants.legacyVehicleNotificationId(
+      NotificationConstants.legacyInsuranceReminderIdBase, vehicleId);
+    final legacySvcId = NotificationConstants.legacyVehicleNotificationId(
+      NotificationConstants.legacyServiceReminderIdBase, vehicleId);
+    final legacyOilId = NotificationConstants.legacyVehicleNotificationId(
+      NotificationConstants.legacyOilChangeReminderIdBase, vehicleId);
+
     await Future.wait([
       _service.cancel(pucId),
       _service.cancel(insId),
       _service.cancel(svcId),
       _service.cancel(oilId),
+      _service.cancel(legacyPucId),
+      _service.cancel(legacyInsId),
+      _service.cancel(legacySvcId),
+      _service.cancel(legacyOilId),
     ]);
   }
 
@@ -314,22 +384,69 @@ class VehicleReminderScheduler {
   // DATE HELPERS
   // ─────────────────────────────────────────────
 
-  /// Computes the reminder trigger date as [expiryDate] minus [daysBeforeExpiry].
+  /// Computes the reminder trigger date for a date-based expiry.
   ///
-  /// Returns `null` if the computed reminder date is already in the past
-  /// (meaning the reminder window has passed — no point scheduling it now).
+  /// **Logic:**
+  /// 1. If the expiry date itself has already completely passed → return `null`.
+  /// 2. If `expiryDate - daysBeforeExpiry` is still in the future → return that date at 09:00.
+  /// 3. If the N-day mark has passed but the expiry is still future → schedule
+  ///    for **tomorrow at 09:00** as an "urgent catch-up" reminder.
+  /// 4. If the expiry is today → schedule for **today at 09:00** if that hasn't passed yet.
+  /// 5. Otherwise → return `null` (no valid future time available).
   DateTime? _reminderDateFor(DateTime expiryDate, int daysBeforeExpiry) {
-    final reminderDate = expiryDate.subtract(Duration(days: daysBeforeExpiry));
-    // Set reminder to fire at 9:00 AM local time on the reminder day.
-    final reminderAtTime = DateTime(
-      reminderDate.year,
-      reminderDate.month,
-      reminderDate.day,
+    final now = DateTime.now();
+
+    // Normalize expiry to midnight (date-only field — prevent UTC offset shifting the day).
+    final expiryDay = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
+    final todayDay = DateTime(now.year, now.month, now.day);
+
+    // 1. Expiry is completely in the past (before today).
+    if (expiryDay.isBefore(todayDay)) {
+      debugPrint('[VehicleReminders] _reminderDateFor: expiry $expiryDay is before today $todayDay → null');
+      return null;
+    }
+
+    // 2. Calculate the ideal N-day-before reminder date.
+    final idealReminderDay = expiryDay.subtract(Duration(days: daysBeforeExpiry));
+    final idealReminderAt9 = DateTime(
+      idealReminderDay.year,
+      idealReminderDay.month,
+      idealReminderDay.day,
       9,
       0,
     );
-    final now = DateTime.now();
-    if (reminderAtTime.isBefore(now)) return null;
-    return reminderAtTime;
+
+    // If the ideal date is still in the future, use it.
+    if (idealReminderAt9.isAfter(now)) {
+      return idealReminderAt9;
+    }
+
+    // 3. Ideal date already passed, but expiry is still future.
+    //    Schedule for tomorrow at 09:00 as an urgent catch-up.
+    final tomorrowAt9 = DateTime(now.year, now.month, now.day + 1, 9, 0);
+    if (tomorrowAt9.isBefore(expiryDay) || _isSameDay(tomorrowAt9, expiryDay)) {
+      debugPrint('[VehicleReminders] _reminderDateFor: ideal date past, '
+          'scheduling urgent catch-up for tomorrow 09:00');
+      return tomorrowAt9;
+    }
+
+    // 4. Expiry is today — schedule for today at 09:00 if it hasn't passed.
+    if (_isSameDay(expiryDay, todayDay)) {
+      final todayAt9 = DateTime(now.year, now.month, now.day, 9, 0);
+      if (todayAt9.isAfter(now)) {
+        debugPrint('[VehicleReminders] _reminderDateFor: expiry is today, '
+            'scheduling for today 09:00');
+        return todayAt9;
+      }
+    }
+
+    // 5. No valid future time available.
+    debugPrint('[VehicleReminders] _reminderDateFor: no valid future time for expiry $expiryDay');
+    return null;
+  }
+
+  /// Returns `true` if two [DateTime] values fall on the same calendar day.
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

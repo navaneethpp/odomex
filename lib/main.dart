@@ -5,7 +5,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odomex/core/notifications/notification_service.dart';
 import 'package:odomex/core/theme/app_theme.dart';
 import 'package:odomex/core/theme/app_theme_mode.dart';
-import 'package:odomex/data/local/data_sources/app_settings_local_data_source.dart';
+
 import 'package:odomex/data/local/hive_boxes.dart';
 import 'package:odomex/data/local/hive_registrar.dart';
 import 'package:odomex/features/vehicle_records/models/vehicle_record.dart';
@@ -30,21 +30,16 @@ Future<void> main() async {
   // 3. Open persistent boxes
   await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
   await Hive.openBox<VehicleRecord>(HiveBoxes.vehicleRecords);
-  final settingsBox = await Hive.openBox<dynamic>(HiveBoxes.appSettings);
+  await Hive.openBox<dynamic>(HiveBoxes.appSettings);
   await Hive.openBox<dynamic>(HiveBoxes.vehicleSettings);
   await Hive.openBox<dynamic>(HiveBoxes.vehiclePreferences);
 
   // 4. Initialize notification service safely without blocking app startup on error
   try {
     await NotificationService.instance.initialize();
-    final appSettingsDataSource = HiveAppSettingsLocalDataSource(settingsBox: settingsBox);
-    final notificationSettings = appSettingsDataSource.getNotificationSettings();
-    await NotificationService.instance.syncDailyActivitySchedule(
-      masterEnabled: notificationSettings.enabled,
-      dailyActivityEnabled: notificationSettings.dailyActivity,
-      hour: notificationSettings.dailyActivityReminderHour,
-      minute: notificationSettings.dailyActivityReminderMinute,
-    );
+    // Note: actual schedule sync happens via NotificationSettingsNotifier.refreshPermissionAndSchedules()
+    // which is triggered from _MainAppState.initState() after the widget tree is ready.
+    // This avoids a duplicate cancel+reschedule cycle on every app start.
   } catch (e, st) {
     debugPrint('Failed to initialize NotificationService: $e\n$st');
   }
