@@ -529,8 +529,8 @@ void main() {
 
       // Fuel Type
       await tester.ensureVisible(
-          find.byType(DropdownButtonFormField<String>));
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+          find.byType(DropdownButtonFormField<PowertrainType>));
+      await tester.tap(find.byType(DropdownButtonFormField<PowertrainType>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Petrol').last);
       await tester.pumpAndSettle();

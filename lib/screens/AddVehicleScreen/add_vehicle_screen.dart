@@ -211,6 +211,17 @@ class _AddVehicleScreenState
           _pucStartDate = null;
         }
       }
+
+      if (_lastOilChangeDate != null) {
+        final oilDate = DateTime(
+          _lastOilChangeDate!.year,
+          _lastOilChangeDate!.month,
+          _lastOilChangeDate!.day,
+        );
+        if (oilDate.isBefore(pDate)) {
+          _lastOilChangeDate = null;
+        }
+      }
     });
   }
 
@@ -1029,15 +1040,31 @@ class _AddVehicleScreenState
               : 'Last Oil Change Date',
           selectedDate: _lastOilChangeDate,
           disableFutureDates: true,
+          firstDate: _purchaseDate,
+          initialDate: _lastOilChangeDate ?? _purchaseDate,
+          enabled: _purchaseDate != null,
+          onDisabledTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Select the vehicle purchase date first.',
+                ),
+              ),
+            );
+          },
           onDateSelected: (date) =>
               setState(() => _lastOilChangeDate = date),
           validator: (date) {
             if (!_hasAnyOilChangeInput) return null;
+            if (_purchaseDate == null) {
+              return 'Select the vehicle purchase date first.';
+            }
             if (date == null) {
               return 'Last oil change date is required.';
             }
-            return validateNotFutureDate(
+            return validateDependentDate(
               date,
+              _purchaseDate,
               'Last oil change date',
             );
           },

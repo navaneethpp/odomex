@@ -499,7 +499,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
-      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per L *');
       final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
 
       // Enter Quantity: 20
@@ -557,7 +557,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
-      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per L *');
       final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
 
       // Enter only 1 field
@@ -594,7 +594,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final quantityFinder = find.widgetWithText(TextFormField, 'Fuel Quantity *');
-      final priceFinder = find.widgetWithText(TextFormField, 'Price per Litre *');
+      final priceFinder = find.widgetWithText(TextFormField, 'Price per L *');
       final amountFinder = find.widgetWithText(TextFormField, 'Amount Paid *');
       final clearFinder = find.text('Clear');
 
